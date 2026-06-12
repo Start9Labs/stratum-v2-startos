@@ -1,33 +1,44 @@
 # Stratum V2
 
-This service runs the **Stratum V2 Translator Proxy**. It lets your existing miners — which speak the older Stratum V1 protocol (Bitaxe, Antminer, and most ASICs) — connect to a modern **Stratum V2** pool. Your miners talk to this service; this service talks to the pool.
+This service connects your existing miners — which speak the older Stratum V1 protocol (Bitaxe, Antminer, most ASICs) — to **Stratum V2**, in one of two modes:
 
-## What you need first
-
-- A **Stratum V2 pool** to mine with, and three details from it:
-  - the pool's **address** (hostname or IP) and **port**,
-  - the pool's **authority public key** (pools publish this on their site/docs),
-  - a **username / worker** name (often your payout address, e.g. `address.worker`).
+- **Pool** — your miners mine to a Stratum V2 **pool**.
+- **Sovereign (solo)** — your miners mine to **your own Bitcoin Core node**, with the block reward going to your address. No pool involved.
 
 ## Getting set up
 
-1. After installing, you'll see a **Configure** task — the service won't start until you complete it.
-2. Open **Configure** and enter your pool address, port, authority public key, and username. The other fields (hashrate estimate, shares per minute, etc.) have sensible defaults — leave them unless your pool tells you otherwise. Save.
-3. **Start** the service.
-4. Open this service's **Interfaces** tab and copy the **Stratum** address — it looks like `stratum+tcp://<your-server>:34255`.
-5. In each miner's settings, set the pool/stratum URL to that address and save. Use the `.local` address for miners on your home network.
+After installing, you'll see a **Configure** task — the service won't start until you complete it. Open **Configure** and pick a **Mining Mode**.
+
+### Pool mode
+
+You need a Stratum V2 pool and three details from it: the pool **address** and **port**, and the pool's **authority public key** (pools publish this). Also set a **username/worker** (often your payout address). Save and start.
+
+### Sovereign (solo) mode
+
+You need **Bitcoin Core (version 31.x)** installed and running on this server. In Configure, choose Sovereign and set:
+
+- **Bitcoin Network** — must match your node (usually Mainnet).
+- **Coinbase Reward Address** — the Bitcoin address that receives the block reward.
+- **Coinbase Signature** — any short label embedded in your blocks.
+
+When you start, this service automatically asks Bitcoin Core to enable its IPC socket and won't start until Bitcoin Core is running with IPC on — you'll see a dependency note if anything's missing.
+
+## Connecting your miners
+
+1. Open this service's **Interfaces** tab and copy the **Stratum** address — it looks like `stratum+tcp://<your-server>:34255`.
+2. In each miner's settings, set the pool/stratum URL to that address and save. Use the `.local` address for miners on your home network.
 
 ## Monitoring
 
-- The **Stratum Server** health check turns green once the proxy is accepting miners.
-- The **Monitoring API** interface exposes read-only hashrate and share statistics if you want to query them from a tool or browser.
+- The **Stratum Server** (and, in sovereign mode, **Job Declaration Client**) health checks turn green once everything is connected.
+- The **Monitoring API** interface exposes read-only hashrate and share stats.
 - Service **Logs** show miners connecting and shares being submitted.
 
 ## Changing settings
 
-Re-run **Configure** at any time to point at a different pool or adjust tuning. The service restarts automatically with the new settings.
+Re-run **Configure** any time to switch modes or change details; the service restarts with the new settings.
 
 ## Limitations
 
-- This is **pool mining** (SV1 → SV2 translation). Sovereign "Job Declaration" mining — where your own Bitcoin node builds block templates — is planned for a future release and will require running Bitcoin Core.
-- There is no built-in web dashboard; monitoring is via the health check, the Monitoring API, and logs.
+- Sovereign mode is **solo** mining and needs **Bitcoin Core 31.x** on the same server.
+- There's no built-in web dashboard; monitoring is via the health checks, the Monitoring API, and logs.
