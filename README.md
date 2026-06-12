@@ -53,11 +53,14 @@ StartOS has no host Docker socket, so this package mirrors the same design using
 
 ## Volume and Data Layout
 
-| Volume | Mount Point    | Purpose                                                        |
-| ------ | -------------- | ------------------------------------------------------------- |
-| `main` | `/data`        | Persistent data root                                          |
-|        | `/data/config` | TOML configs sv2-ui generates for the Translator/JDC          |
-|        | `/data/docker` | Nested Docker `data-root` (images + container state)          |
+| Volume                   | Mount Point        | Purpose                                                   |
+| ------------------------ | ------------------ | --------------------------------------------------------- |
+| `main`                   | `/data`            | Persistent data root                                      |
+|                          | `/data/config`     | TOML + `state.json` sv2-ui generates for the Translator/JDC |
+|                          | `/data/docker`     | Nested Docker `data-root` (images + container state)      |
+| `bitcoind:main` (JD only)| `/mnt/bitcoind-ipc`| Bitcoin Core IPC socket dir, mounted read-only in JD mode |
+
+`startos/fileModels/stateJson.ts` models `/data/config/state.json` (written by sv2-ui) and reads its `mode` field so StartOS knows whether Job Declaration mode is active.
 
 ---
 
@@ -92,7 +95,12 @@ The Stratum interface only has a listener after setup completes; it is intention
 
 ## Dependencies
 
-None enforced. Pool/SV1-translation mode is fully standalone. **Job Declaration (sovereign) mode** additionally needs a Bitcoin Core node reachable over its IPC socket; cross-package IPC mounting is not wired in this package yet, so JD mode is not yet supported on StartOS.
+**`bitcoind` — optional, conditional.** Pool / SV1-translation mode is fully standalone (no node). When the user selects **Job Declaration (sovereign) mode** in the wizard, sv2-ui records `mode: "jd"` in `state.json`; `setupDependencies` reads that reactively and, only then:
+
+- declares `bitcoind` (`kind: 'running'`, `versionRange >=31.0:0` — IPC lives on the Core 31.x branch), and
+- fires a cross-service task against bitcoind's `ipc` action (`enableIpc: true`, `input-not-matches`) so the node's IPC socket is **enforced on** while JD mode is active.
+
+In JD mode `setupMain` also mounts `bitcoind`'s `main` volume `ipc/` subdir read-only at `/mnt/bitcoind-ipc`, so the nested JD-Client container can bind `/mnt/bitcoind-ipc/bitcoin-core.sock`. In pool mode none of this applies and no dependency warning is shown.
 
 ---
 
@@ -100,7 +108,7 @@ None enforced. Pool/SV1-translation mode is fully standalone. **Job Declaration 
 
 1. **Nested Docker is required.** This package only functions on StartOS builds that provide the `userspaceFilesystems` and `virtualNetworking` manifest grants (StartOS 0.4.0-beta.10 / start-sdk 2.0.0+). See [Build Requirements](#build-requirements).
 2. **Runtime image pull.** The Translator (and JDC) images are pulled from Docker Hub on first setup rather than baked into the s9pk, mirroring upstream/Umbrel. The server needs internet access for that first pull; pulled images persist on the `main` volume.
-3. **Job Declaration mode unsupported (yet)** — see [Dependencies](#dependencies).
+3. **JD-mode socket path.** In Job Declaration mode the user must point the wizard's Bitcoin socket field at `/mnt/bitcoind-ipc/bitcoin-core.sock` (where this package mounts Bitcoin Core's IPC socket). JD mode requires a Bitcoin Core **31.x** node (IPC is not on the 30.x branch).
 
 ---
 
@@ -123,7 +131,12 @@ ports:
   stratum: 34255         # raw TCP, SV1 miner connections (Translator Proxy)
 nested_runtime: dockerd (rootful, fuse-overlayfs, runc-nested wrapper)
 requires_manifest_flags: [userspaceFilesystems, virtualNetworking]  # start-sdk 2.0.0+
-dependencies: none (JD mode would need Bitcoin Core IPC; not yet wired)
+dependencies:
+  bitcoind:                # optional; enforced only when state.json mode == "jd"
+    optional: true
+    versionRange: ">=31.0:0"
+    enforces: { action: ipc, enableIpc: true }
+    mount: { from: "bitcoind:main/ipc", to: /mnt/bitcoind-ipc, readonly: true }
 startos_managed_env_vars:
   HOST_OS: startos
   STRATUM_HOST: <stratum interface hostname>   # shown to miners in the UI

@@ -33,5 +33,15 @@ export const manifest = setupManifest({
     start: null,
     stop: null,
   },
-  dependencies: {},
+  dependencies: {
+    bitcoind: {
+      description:
+        'Required only for Job Declaration (sovereign) mining mode, which builds block templates from your own node over its IPC socket.',
+      optional: true,
+      metadata: {
+        title: 'Bitcoin Core',
+        icon: 'https://raw.githubusercontent.com/Start9Labs/bitcoin-core-startos/feec0b1dae42961a257948fe39b40caf8672fce1/dep-icon.svg',
+      },
+    },
+  },
 })

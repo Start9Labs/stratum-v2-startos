@@ -10,6 +10,7 @@ export default {
     5: 'El panel de configuración y monitoreo de Stratum V2 UI',
     6: 'Stratum (Translator Proxy)',
     7: 'Dirección a la que apuntan los mineros SV1 (stratum+tcp). Disponible una vez completada la configuración.',
+    8: 'El modo de Declaración de Trabajo de Stratum V2 requiere IPC de Bitcoin Core.',
   },
   de_DE: {
     0: 'Starte Stratum V2 UI!',
@@ -20,6 +21,7 @@ export default {
     5: 'Das Einrichtungs- und Monitoring-Dashboard von Stratum V2 UI',
     6: 'Stratum (Translator Proxy)',
     7: 'Adresse, auf die SV1-Miner zeigen (stratum+tcp). Verfügbar, sobald die Einrichtung abgeschlossen ist.',
+    8: 'Der Stratum-V2-Job-Declaration-Modus erfordert Bitcoin Core IPC.',
   },
   pl_PL: {
     0: 'Uruchamianie Stratum V2 UI!',
@@ -30,6 +32,7 @@ export default {
     5: 'Panel konfiguracji i monitorowania Stratum V2 UI',
     6: 'Stratum (Translator Proxy)',
     7: 'Adres, na który kierują koparki SV1 (stratum+tcp). Dostępny po zakończeniu konfiguracji.',
+    8: 'Tryb Job Declaration Stratum V2 wymaga IPC Bitcoin Core.',
   },
   fr_FR: {
     0: 'Démarrage de Stratum V2 UI !',
@@ -40,5 +43,6 @@ export default {
     5: 'Le tableau de bord de configuration et de surveillance de Stratum V2 UI',
     6: 'Stratum (Translator Proxy)',
     7: 'Adresse vers laquelle les mineurs SV1 pointent (stratum+tcp). Disponible une fois la configuration terminée.',
+    8: 'Le mode Job Declaration de Stratum V2 nécessite l’IPC de Bitcoin Core.',
   },
 } satisfies Record<string, LangDict>

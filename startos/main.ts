@@ -1,6 +1,7 @@
+import { stateJson } from './fileModels/stateJson'
 import { i18n } from './i18n'
 import { sdk } from './sdk'
-import { uiPort } from './utils'
+import { bitcoindIpcMountpoint, uiPort } from './utils'
 
 export const main = sdk.setupMain(async ({ effects }) => {
   console.info(i18n('Starting Stratum V2 UI!'))
@@ -14,15 +15,28 @@ export const main = sdk.setupMain(async ({ effects }) => {
     )
     .const()
 
+  const jdMode = (await stateJson.read((s) => s.mode).const(effects)) === 'jd'
+
+  let mounts = sdk.Mounts.of().mountVolume({
+    volumeId: 'main',
+    subpath: null,
+    mountpoint: '/data',
+    readonly: false,
+  })
+  if (jdMode) {
+    mounts = mounts.mountDependency({
+      dependencyId: 'bitcoind',
+      volumeId: 'main',
+      subpath: 'ipc',
+      mountpoint: bitcoindIpcMountpoint,
+      readonly: true,
+    })
+  }
+
   const subcontainer = await sdk.SubContainer.of(
     effects,
     { imageId: 'sv2-ui' },
-    sdk.Mounts.of().mountVolume({
-      volumeId: 'main',
-      subpath: null,
-      mountpoint: '/data',
-      readonly: false,
-    }),
+    mounts,
     'sv2-ui-sub',
   )
 

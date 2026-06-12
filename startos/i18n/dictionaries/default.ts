@@ -12,6 +12,9 @@ const dict = {
   'The Stratum V2 UI setup and monitoring dashboard': 5,
   'Stratum (Translator Proxy)': 6,
   'Address SV1 miners point to (stratum+tcp). Available once setup completes.': 7,
+
+  // dependencies.ts
+  'Stratum V2 Job Declaration mode requires Bitcoin Core IPC.': 8,
 } as const
 
 /**
