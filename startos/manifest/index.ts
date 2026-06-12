@@ -20,7 +20,7 @@ export const manifest = setupManifest({
   alerts: {
     install: {
       en_US:
-        'Before starting, use the Configure action to choose a mining mode and connection details. Pool mode connects your miners to a Stratum V2 pool. Sovereign mode mines solo to your own Bitcoin Core node (31.x) over IPC. Then point your SV1 miners at the Stratum interface address.',
+        'Before starting, use the Configure action to choose a mining mode: Pool (connect to a Stratum V2 pool), Solo (mine to your own Bitcoin Core 31.x node), or Job Declaration with Pool (declare your own templates to a pool). Then point your SV1 miners at the Stratum interface address.',
     },
     update: null,
     uninstall: null,

@@ -6,10 +6,11 @@
 
 > **Upstream repo:** <https://github.com/stratum-mining/sv2-apps>
 
-Runs the Stratum Reference Implementation (SRI) mining apps as native StartOS daemons. It accepts connections from legacy SV1 miners (Bitaxe, Antminer, etc.) and translates them to Stratum V2, in one of two modes:
+Runs the Stratum Reference Implementation (SRI) mining apps as native StartOS daemons. It accepts connections from legacy SV1 miners (Bitaxe, Antminer, etc.) and translates them to Stratum V2, in one of three modes:
 
 - **Pool** — translate your miners to an external Stratum V2 pool.
-- **Sovereign (solo)** — mine solo to your **own Bitcoin Core node**: the JD Client pulls block templates from Bitcoin Core over IPC and the reward goes to your address. No pool involved.
+- **Solo (Sovereign)** — mine solo to your **own Bitcoin Core node**: the JD Client pulls block templates from Bitcoin Core over IPC and the reward goes to your address. No pool.
+- **Job Declaration with Pool** — you build your **own block templates** from your node and *declare* them to a pool (which still handles payout/variance). Sovereign job selection while pooling.
 
 No nested Docker, no runtime image pulls — the official multi-arch SRI binaries are baked into the s9pk and run directly; StartOS generates their TOML config.
 
@@ -35,7 +36,7 @@ No nested Docker, no runtime image pulls — the official multi-arch SRI binarie
 The image bundles both SRI binaries — `translator_sv2` and `jd_client_sv2` — built from the official `v0.4.0` images.
 
 - **Pool mode:** one daemon, `translator_sv2`, whose upstream is the external pool.
-- **Sovereign mode:** two daemons, `jd_client_sv2` + `translator_sv2`, **sharing one subcontainer** (hence one network namespace) so the translator reaches the JD Client at `127.0.0.1:34265`. The translator's upstream is the local JDC; the JDC's template provider is Bitcoin Core over its IPC socket.
+- **Job-declaration modes (solo / jd-pool):** two daemons, `jd_client_sv2` + `translator_sv2`, **sharing one subcontainer** (hence one network namespace) so the translator reaches the JD Client at `127.0.0.1:34265`. The translator's upstream is the local JDC; the JDC's template provider is Bitcoin Core over its IPC socket. The JDC runs `SOLOMINING` (solo) or `FULLTEMPLATE` with the pool's JD server (jd-pool).
 
 All config is rendered by `setupMain` from `store.json` into exact TOML **strings** (the Rust binaries' `f64` fields reject bare integers, so floats like `6.0` must be preserved — a generic TOML serializer would corrupt them).
 
@@ -65,7 +66,8 @@ All config is rendered by `setupMain` from `store.json` into exact TOML **string
 The **Configure** action picks a **Mining Mode** (`Value.union`) and writes `store.json`:
 
 **Pool mode:** Pool Address, Pool Port, Pool Authority Public Key.
-**Sovereign mode:** Bitcoin Network, Coinbase Reward Address, Coinbase Signature.
+**Solo mode:** Bitcoin Network, Coinbase Reward Address, Coinbase Signature.
+**JD with Pool mode:** the Pool fields + JD Server Port + the Solo fields (coinbase address is the solo fallback payout).
 **Common:** Username/Worker, Starting Hashrate Estimate (TH/s), Shares Per Minute, Extranonce2 Size, Aggregate Channels.
 
 A critical install task (`require-configure`) blocks startup until Configure runs; the handler clears it.
@@ -104,15 +106,15 @@ The translator only opens 34255 after its upstream connects, so these go green o
 
 ## Dependencies
 
-**`bitcoind` — optional, conditional.** Pool mode is standalone. When `store.json` mode is `sovereign`, `setupDependencies` declares `bitcoind` (`running`, `versionRange >=31.0:0` — IPC is on the Core 31.x branch) and fires a task enforcing its `ipc` action (`enableIpc: true`). `setupMain` then mounts the IPC socket read-only and `checkDependencies().throwIfNotSatisfied()` blocks sovereign start until Bitcoin Core is installed, running, and IPC-enabled.
+**`bitcoind` — optional, conditional.** Pool mode is standalone. When `store.json` mode is `solo` or `jd-pool`, `setupDependencies` declares `bitcoind` (`running`, `versionRange >=31.0:0` — IPC is on the Core 31.x branch) and fires a task enforcing its `ipc` action (`enableIpc: true`). `setupMain` then mounts the IPC socket read-only and `checkDependencies().throwIfNotSatisfied()` blocks start until Bitcoin Core is installed, running, and IPC-enabled.
 
 ---
 
 ## Limitations and Differences
 
-1. **Sovereign mode requires Bitcoin Core 31.x** (IPC support) installed on the same server.
+1. **Solo and JD-with-pool modes require Bitcoin Core 31.x** (IPC support) installed on the same server.
 2. **No bundled web dashboard.** Upstream's `sv2-ui` (a Docker control-plane) is not used; monitoring is via the health checks, the Monitoring API, and logs.
-3. **JD-with-pool (FULLTEMPLATE) is not included** — sovereign mode is solo (SOLOMINING). Pool mode covers pooled mining.
+3. **JD-with-pool needs a pool that runs a JD server (JDS).** Not all Stratum V2 pools do.
 
 ---
 
@@ -123,8 +125,9 @@ package_id: stratum-v2
 image: Dockerfile (stratumv2/translator_sv2:v0.4.0 + jd_client_sv2 binary)  # multi-arch, baked in
 architectures: [x86_64, aarch64]
 modes:
-  pool:      { daemons: [translator], upstream: external pool }
-  sovereign: { daemons: [jdc, translator], shared_subcontainer: true, template_provider: bitcoind-ipc }
+  pool:    { daemons: [translator], upstream: external pool }
+  solo:    { daemons: [jdc, translator], shared_subcontainer: true, jdc_mode: SOLOMINING, template_provider: bitcoind-ipc }
+  jd-pool: { daemons: [jdc, translator], shared_subcontainer: true, jdc_mode: FULLTEMPLATE, upstreams: pool+jds, template_provider: bitcoind-ipc }
 binaries: /app/translator_sv2 -c /data/translator.toml ; /app/jd_client_sv2 -c /data/jdc.toml
 volumes:
   main: /data            # store.json + generated *.toml
@@ -135,7 +138,7 @@ ports:
 config: Configure action (Value.union mode select) -> store.json
 require_setup: critical own-task 'require-configure'
 dependencies:
-  bitcoind:              # only when mode == sovereign
+  bitcoind:              # only when mode in (solo, jd-pool)
     optional: true
     versionRange: ">=31.0:0"
     enforces: { action: ipc, enableIpc: true }

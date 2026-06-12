@@ -2,14 +2,15 @@ import { FileHelper, z } from '@start9labs/start-sdk'
 import { sdk } from '../sdk'
 
 const shape = z.object({
-  mode: z.enum(['pool', 'sovereign']).nullable().catch(null),
+  mode: z.enum(['pool', 'solo', 'jd-pool']).nullable().catch(null),
 
-  // Pool mode
+  // Pool fields (used by 'pool' and 'jd-pool')
   poolAddress: z.string().nullable().catch(null),
   poolPort: z.number().nullable().catch(null),
   poolAuthorityPubkey: z.string().nullable().catch(null),
+  jdsPort: z.number().catch(3334),
 
-  // Sovereign (solo) mode
+  // Job-declaration fields (used by 'solo' and 'jd-pool')
   bitcoinNetwork: z
     .enum(['mainnet', 'testnet4', 'signet', 'regtest'])
     .catch('mainnet'),

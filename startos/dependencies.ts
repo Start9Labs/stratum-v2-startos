@@ -5,14 +5,15 @@ import { sdk } from './sdk'
 export const setDependencies = sdk.setupDependencies(async ({ effects }) => {
   const mode = await storeJson.read((s) => s.mode).const(effects)
 
-  // Pool mode needs no Bitcoin node. Sovereign mode mines from your own node's
-  // templates over IPC, so depend on bitcoind and enforce its IPC socket on.
-  if (mode !== 'sovereign') return {}
+  // Pool mode needs no Bitcoin node. The job-declaration modes (solo / jd-pool)
+  // build templates from your own node over IPC, so depend on bitcoind and
+  // enforce its IPC socket on.
+  if (mode !== 'solo' && mode !== 'jd-pool') return {}
 
   await sdk.action.createTask(effects, 'bitcoind', ipc, 'critical', {
     input: { kind: 'partial', value: { enableIpc: true } },
     when: { condition: 'input-not-matches', once: false },
-    reason: 'Sovereign mining requires Bitcoin Core IPC.',
+    reason: 'Job-declaration mining requires Bitcoin Core IPC.',
   })
 
   return {
