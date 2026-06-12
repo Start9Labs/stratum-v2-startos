@@ -3,33 +3,39 @@ import { sdk } from './sdk'
 import { uiPort } from './utils'
 
 export const main = sdk.setupMain(async ({ effects }) => {
-  /**
-   * ======================== Setup (optional) ========================
-   *
-   * In this section, we fetch any resources or run any desired preliminary commands.
-   */
-  console.info(i18n('Starting Hello World!'))
+  console.info(i18n('Starting Stratum V2 UI!'))
 
-  /**
-   * ======================== Daemons ========================
-   *
-   * In this section, we create one or more daemons that define the service runtime.
-   *
-   * Each daemon defines its own health check, which can optionally be exposed to the user.
-   */
+  const stratumHost = await sdk.serviceInterface
+    .getOwn(effects, 'stratum', (i) =>
+      i?.addressInfo
+        ?.format('hostname-info')
+        .map((h) => h.hostname)
+        .find((h) => !h.endsWith('.onion')),
+    )
+    .const()
+
+  const subcontainer = await sdk.SubContainer.of(
+    effects,
+    { imageId: 'sv2-ui' },
+    sdk.Mounts.of().mountVolume({
+      volumeId: 'main',
+      subpath: null,
+      mountpoint: '/data',
+      readonly: false,
+    }),
+    'sv2-ui-sub',
+  )
+
   return sdk.Daemons.of(effects).addDaemon('primary', {
-    subcontainer: await sdk.SubContainer.of(
-      effects,
-      { imageId: 'hello-world' },
-      sdk.Mounts.of().mountVolume({
-        volumeId: 'main',
-        subpath: null,
-        mountpoint: '/data',
-        readonly: false,
-      }),
-      'hello-world-sub',
-    ),
-    exec: { command: ['hello-world'] },
+    subcontainer,
+    exec: {
+      command: sdk.useEntrypoint(['/usr/local/bin/start.sh']),
+      runAsInit: true,
+      env: {
+        HOST_OS: 'startos',
+        ...(stratumHost ? { STRATUM_HOST: stratumHost } : {}),
+      },
+    },
     ready: {
       display: i18n('Web Interface'),
       fn: () =>
