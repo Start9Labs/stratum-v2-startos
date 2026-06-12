@@ -2,23 +2,26 @@ import { setupManifest } from '@start9labs/start-sdk'
 import { long, short } from './i18n'
 
 export const manifest = setupManifest({
-  id: 'hello-world',
-  title: 'Hello World',
+  id: 'stratum-v2',
+  title: 'Stratum V2',
   license: 'MIT',
-  packageRepo: 'https://github.com/Start9Labs/hello-world-startos',
-  upstreamRepo: 'https://github.com/Start9Labs/hello-world',
-  marketingUrl: 'https://start9.com/',
-  donationUrl: 'https://donate.start9.com/',
+  packageRepo: 'https://github.com/Start9Labs/sv2-ui-startos',
+  upstreamRepo: 'https://github.com/stratum-mining/sv2-apps',
+  marketingUrl: 'https://stratumprotocol.org/',
+  donationUrl: 'https://opensats.org/',
   description: { short, long },
   volumes: ['main'],
   images: {
-    'hello-world': {
-      source: { dockerTag: 'ghcr.io/start9labs/hello-world:2.0.0' },
-      arch: ['x86_64', 'aarch64', 'riscv64'],
+    translator: {
+      source: { dockerTag: 'stratumv2/translator_sv2:v0.4.0' },
+      arch: ['x86_64', 'aarch64'],
     },
   },
   alerts: {
-    install: null,
+    install: {
+      en_US:
+        'Before starting, use the Configure action to set your Stratum V2 pool (address, port, authority public key, and username). Then point your SV1 miners at the Stratum interface address shown under this service’s Interfaces tab.',
+    },
     update: null,
     uninstall: null,
     restore: null,

@@ -1,4 +1,5 @@
-// Here we define any constants or functions that are shared by multiple components
-// throughout the package codebase. This file will be unnecessary for many packages.
+// Port the Translator Proxy listens on for SV1 miners (stratum+tcp).
+export const stratumPort = 34255
 
-export const uiPort = 80
+// Translator Proxy's read-only HTTP monitoring API.
+export const monitoringPort = 9092
