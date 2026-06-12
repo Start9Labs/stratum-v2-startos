@@ -1,25 +1,33 @@
-# Hello World
+# Stratum V2
 
-You've installed Hello World — there's nothing to configure and nothing to set up. This page covers how to open the page it serves and where to read more. (If you're a developer, Hello World is also the recommended packaging template.)
+This service runs the **Stratum V2 Translator Proxy**. It lets your existing miners — which speak the older Stratum V1 protocol (Bitaxe, Antminer, and most ASICs) — connect to a modern **Stratum V2** pool. Your miners talk to this service; this service talks to the pool.
 
-## Documentation
+## What you need first
 
-- [Hello World upstream docs](https://github.com/Start9Labs/hello-world/blob/master/README.md) — the README for the web server this package runs.
-- [StartOS Packaging Guide](https://docs.start9.com/packaging) — how to build a StartOS service package from that template.
-
-## What you get on StartOS
-
-- **A running web server** that serves a single static page.
-- **Nothing to configure and no actions** — the service starts on its own and is immediately usable.
+- A **Stratum V2 pool** to mine with, and three details from it:
+  - the pool's **address** (hostname or IP) and **port**,
+  - the pool's **authority public key** (pools publish this on their site/docs),
+  - a **username / worker** name (often your payout address, e.g. `address.worker`).
 
 ## Getting set up
 
-There's no setup wizard, no admin password, no first-run prompt — Hello World is usable the moment it starts. To view the page it serves:
+1. After installing, you'll see a **Configure** task — the service won't start until you complete it.
+2. Open **Configure** and enter your pool address, port, authority public key, and username. The other fields (hashrate estimate, shares per minute, etc.) have sensible defaults — leave them unless your pool tells you otherwise. Save.
+3. **Start** the service.
+4. Open this service's **Interfaces** tab and copy the **Stratum** address — it looks like `stratum+tcp://<your-server>:34255`.
+5. In each miner's settings, set the pool/stratum URL to that address and save. Use the `.local` address for miners on your home network.
 
-1. Open Hello World's **Dashboard** tab.
-2. Click the **Web UI** interface to open the served page in your browser.
+## Monitoring
+
+- The **Stratum Server** health check turns green once the proxy is accepting miners.
+- The **Monitoring API** interface exposes read-only hashrate and share statistics if you want to query them from a tool or browser.
+- Service **Logs** show miners connecting and shares being submitted.
+
+## Changing settings
+
+Re-run **Configure** at any time to point at a different pool or adjust tuning. The service restarts automatically with the new settings.
 
 ## Limitations
 
-- Hello World is intentionally minimal. It is not a useful service on its own; it exists to demonstrate the StartOS packaging system.
-- The page content is static and cannot be customized through the StartOS UI.
+- This is **pool mining** (SV1 → SV2 translation). Sovereign "Job Declaration" mining — where your own Bitcoin node builds block templates — is planned for a future release and will require running Bitcoin Core.
+- There is no built-in web dashboard; monitoring is via the health check, the Monitoring API, and logs.
