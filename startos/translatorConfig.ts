@@ -30,6 +30,8 @@ min_supported_version = 2
 
 downstream_extranonce2_size = ${extranonce2Size}
 
+user_identity = "${cfg.username}"
+
 aggregate_channels = ${cfg.aggregateChannels}
 
 supported_extensions = []
@@ -48,6 +50,5 @@ job_keepalive_interval_secs = 60
 address = "${cfg.poolAddress}"
 port = ${cfg.poolPort}
 authority_pubkey = "${cfg.poolAuthorityPubkey}"
-user_identity = "${cfg.username}"
 `
 }
