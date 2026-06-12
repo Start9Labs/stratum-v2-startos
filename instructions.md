@@ -1,9 +1,10 @@
 # Stratum V2
 
-This service connects your existing miners — which speak the older Stratum V1 protocol (Bitaxe, Antminer, most ASICs) — to **Stratum V2**, in one of two modes:
+This service connects your existing miners — which speak the older Stratum V1 protocol (Bitaxe, Antminer, most ASICs) — to **Stratum V2**, in one of three modes:
 
 - **Pool** — your miners mine to a Stratum V2 **pool**.
-- **Sovereign (solo)** — your miners mine to **your own Bitcoin Core node**, with the block reward going to your address. No pool involved.
+- **Solo (Sovereign)** — your miners mine to **your own Bitcoin Core node**, with the block reward going to your address. No pool.
+- **Job Declaration with Pool** — you build your **own block templates** from your node and declare them to a pool, while the pool still handles payouts. Best of both: you choose the transactions, the pool smooths your income.
 
 ## Getting set up
 
@@ -13,15 +14,19 @@ After installing, you'll see a **Configure** task — the service won't start un
 
 You need a Stratum V2 pool and three details from it: the pool **address** and **port**, and the pool's **authority public key** (pools publish this). Also set a **username/worker** (often your payout address). Save and start.
 
-### Sovereign (solo) mode
+### Solo (sovereign) mode
 
-You need **Bitcoin Core (version 31.x)** installed and running on this server. In Configure, choose Sovereign and set:
+You need **Bitcoin Core (version 31.x)** installed and running on this server. In Configure, choose Solo and set:
 
 - **Bitcoin Network** — must match your node (usually Mainnet).
 - **Coinbase Reward Address** — the Bitcoin address that receives the block reward.
 - **Coinbase Signature** — any short label embedded in your blocks.
 
 When you start, this service automatically asks Bitcoin Core to enable its IPC socket and won't start until Bitcoin Core is running with IPC on — you'll see a dependency note if anything's missing.
+
+### Job Declaration with Pool mode
+
+Also needs **Bitcoin Core 31.x** running here, **and** a pool that runs a Job Declaration server. In Configure, choose this mode and set both the **pool** details (address, port, authority key, and the pool's **JD Server Port** — often 3334) and the **Bitcoin Network**, a **Coinbase Reward Address** (used as a solo fallback), and a **Coinbase Signature**. Same Bitcoin Core IPC requirement as Solo mode.
 
 ## Connecting your miners
 
@@ -40,5 +45,6 @@ Re-run **Configure** any time to switch modes or change details; the service res
 
 ## Limitations
 
-- Sovereign mode is **solo** mining and needs **Bitcoin Core 31.x** on the same server.
+- Solo and JD-with-pool modes need **Bitcoin Core 31.x** on the same server.
+- JD-with-pool also needs a pool that runs a Job Declaration server (not all pools do).
 - There's no built-in web dashboard; monitoring is via the health checks, the Monitoring API, and logs.

@@ -3,7 +3,7 @@ import { storeJson } from './fileModels/storeJson'
 import { translatorToml } from './fileModels/translatorToml'
 import { jdcToml } from './fileModels/jdcToml'
 import { generateTranslatorToml } from './translatorConfig'
-import { generateJdcSoloToml } from './jdcConfig'
+import { generateJdcToml, JdcConfig } from './jdcConfig'
 import { sdk } from './sdk'
 import {
   ipcSocketMountpoint,
@@ -69,25 +69,43 @@ export const main = sdk.setupMain(async ({ effects }) => {
     })
   }
 
-  // Sovereign (solo) mode: JD Client + Translator share one subcontainer so the
-  // translator reaches the JDC at 127.0.0.1. JDC builds templates from Bitcoin
-  // Core over its IPC socket (mounted read-only from the bitcoind dependency).
+  // Job-declaration modes (solo / jd-pool): JD Client + Translator share one
+  // subcontainer so the translator reaches the JDC at 127.0.0.1. The JDC builds
+  // templates from Bitcoin Core over its IPC socket (mounted from bitcoind).
   if (!store.coinbaseRewardAddress) {
-    throw new Error('Sovereign mode requires a coinbase reward address.')
+    throw new Error('Job-declaration modes require a coinbase reward address.')
   }
-
   await sdk.checkDependencies(effects).then((r) => r.throwIfNotSatisfied())
 
-  await jdcToml.write(
-    effects,
-    generateJdcSoloToml({
-      username: store.username,
-      sharesPerMinute: store.sharesPerMinute,
-      jdcSignature: store.jdcSignature,
-      coinbaseRewardAddress: store.coinbaseRewardAddress,
-      network: store.bitcoinNetwork,
-    }),
-  )
+  const jdcConfig: JdcConfig =
+    store.mode === 'jd-pool'
+      ? (() => {
+          if (!store.poolAddress || !store.poolPort || !store.poolAuthorityPubkey) {
+            throw new Error('JD-with-pool mode requires pool address, port, and authority key.')
+          }
+          return {
+            kind: 'jd-pool',
+            username: store.username,
+            sharesPerMinute: store.sharesPerMinute,
+            jdcSignature: store.jdcSignature,
+            coinbaseRewardAddress: store.coinbaseRewardAddress,
+            network: store.bitcoinNetwork,
+            poolAuthorityPubkey: store.poolAuthorityPubkey,
+            poolAddress: store.poolAddress,
+            poolPort: store.poolPort,
+            jdsPort: store.jdsPort,
+          }
+        })()
+      : {
+          kind: 'solo',
+          username: store.username,
+          sharesPerMinute: store.sharesPerMinute,
+          jdcSignature: store.jdcSignature,
+          coinbaseRewardAddress: store.coinbaseRewardAddress,
+          network: store.bitcoinNetwork,
+        }
+
+  await jdcToml.write(effects, generateJdcToml(jdcConfig))
   await translatorToml.write(
     effects,
     generateTranslatorToml(tuning, {
