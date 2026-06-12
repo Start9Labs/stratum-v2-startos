@@ -2,35 +2,76 @@ import { storeJson } from '../fileModels/storeJson'
 import { sdk } from '../sdk'
 import { requireConfigureReplayId } from '../init/taskRequireConfigure'
 
-const { InputSpec, Value } = sdk
+const { InputSpec, Value, Variants } = sdk
 
 export const inputSpec = InputSpec.of({
-  poolAddress: Value.text({
-    name: 'Pool Address',
-    description: 'Hostname or IP of the Stratum V2 pool (no port).',
-    required: true,
-    default: null,
-    placeholder: 'pool.example.com',
-  }),
-  poolPort: Value.number({
-    name: 'Pool Port',
-    description: 'Stratum V2 port of the pool.',
-    required: true,
-    default: 34254,
-    integer: true,
-    min: 1,
-    max: 65535,
-  }),
-  poolAuthorityPubkey: Value.text({
-    name: 'Pool Authority Public Key',
-    description: "The pool's Stratum V2 authority public key.",
-    required: true,
-    default: null,
+  connection: Value.union({
+    name: 'Mining Mode',
+    description:
+      'Pool: translate SV1 miners to a Stratum V2 pool. Sovereign: mine solo to your own Bitcoin Core node (requires Bitcoin Core 31.x with IPC).',
+    default: 'pool',
+    variants: Variants.of({
+      pool: {
+        name: 'Pool',
+        spec: InputSpec.of({
+          poolAddress: Value.text({
+            name: 'Pool Address',
+            description: 'Hostname or IP of the Stratum V2 pool (no port).',
+            required: true,
+            default: null,
+            placeholder: 'pool.example.com',
+          }),
+          poolPort: Value.number({
+            name: 'Pool Port',
+            description: 'Stratum V2 port of the pool.',
+            required: true,
+            default: 34254,
+            integer: true,
+            min: 1,
+            max: 65535,
+          }),
+          poolAuthorityPubkey: Value.text({
+            name: 'Pool Authority Public Key',
+            description: "The pool's Stratum V2 authority public key.",
+            required: true,
+            default: null,
+          }),
+        }),
+      },
+      sovereign: {
+        name: 'Sovereign (solo)',
+        spec: InputSpec.of({
+          bitcoinNetwork: Value.select({
+            name: 'Bitcoin Network',
+            description: 'Must match your Bitcoin Core node.',
+            default: 'mainnet',
+            values: {
+              mainnet: 'Mainnet',
+              testnet4: 'Testnet4',
+              signet: 'Signet',
+              regtest: 'Regtest',
+            },
+          }),
+          coinbaseRewardAddress: Value.text({
+            name: 'Coinbase Reward Address',
+            description: 'Bitcoin address that receives the block reward.',
+            required: true,
+            default: null,
+          }),
+          jdcSignature: Value.text({
+            name: 'Coinbase Signature',
+            description: 'String added to the coinbase scriptSig.',
+            required: true,
+            default: 'StratumV2 on StartOS',
+          }),
+        }),
+      },
+    }),
   }),
   username: Value.text({
     name: 'Username / Worker',
     description:
-      'Identity sent upstream (often your payout address or pool username, e.g. address.worker).',
+      'Identity sent upstream (often your payout address or pool username, e.g. address.worker). In sovereign mode any label works.',
     required: true,
     default: null,
   }),
@@ -72,7 +113,7 @@ export const configure = sdk.Action.withInput(
 
   async ({ effects }) => ({
     name: 'Configure',
-    description: 'Set the Stratum V2 pool the Translator Proxy connects to.',
+    description: 'Set the mining mode and connection details.',
     warning: null,
     allowedStatuses: 'any',
     group: null,
@@ -83,10 +124,26 @@ export const configure = sdk.Action.withInput(
 
   async ({ effects }) => {
     const s = await storeJson.read().once()
+    const connection =
+      s?.mode === 'sovereign'
+        ? {
+            selection: 'sovereign' as const,
+            value: {
+              bitcoinNetwork: s.bitcoinNetwork,
+              coinbaseRewardAddress: s.coinbaseRewardAddress ?? undefined,
+              jdcSignature: s.jdcSignature,
+            },
+          }
+        : {
+            selection: 'pool' as const,
+            value: {
+              poolAddress: s?.poolAddress ?? undefined,
+              poolPort: s?.poolPort ?? undefined,
+              poolAuthorityPubkey: s?.poolAuthorityPubkey ?? undefined,
+            },
+          }
     return {
-      poolAddress: s?.poolAddress ?? undefined,
-      poolPort: s?.poolPort ?? undefined,
-      poolAuthorityPubkey: s?.poolAuthorityPubkey ?? undefined,
+      connection,
       username: s?.username ?? undefined,
       minHashrateThs: s?.minHashrateThs ?? undefined,
       sharesPerMinute: s?.sharesPerMinute ?? undefined,
@@ -96,9 +153,30 @@ export const configure = sdk.Action.withInput(
   },
 
   async ({ effects, input }) => {
-    await storeJson.merge(effects, input)
-    // Auto-clear the install-time "needs configuration" task now that pool
-    // details exist (own-task auto-clear is unreliable from init; see memory).
+    const common = {
+      username: input.username,
+      minHashrateThs: input.minHashrateThs,
+      sharesPerMinute: input.sharesPerMinute,
+      extranonce2Size: input.extranonce2Size,
+      aggregateChannels: input.aggregateChannels,
+    }
+    if (input.connection.selection === 'sovereign') {
+      await storeJson.merge(effects, {
+        mode: 'sovereign',
+        bitcoinNetwork: input.connection.value.bitcoinNetwork,
+        coinbaseRewardAddress: input.connection.value.coinbaseRewardAddress,
+        jdcSignature: input.connection.value.jdcSignature,
+        ...common,
+      })
+    } else {
+      await storeJson.merge(effects, {
+        mode: 'pool',
+        poolAddress: input.connection.value.poolAddress,
+        poolPort: input.connection.value.poolPort,
+        poolAuthorityPubkey: input.connection.value.poolAuthorityPubkey,
+        ...common,
+      })
+    }
     await sdk.action.clearTask(effects, requireConfigureReplayId)
   },
 )
