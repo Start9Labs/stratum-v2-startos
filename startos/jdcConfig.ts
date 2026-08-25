@@ -1,6 +1,6 @@
 import {
   BitcoinNetwork,
-  bitcoindIpcDataDir,
+  jdcDataDir,
   jdcAuthorityPublicKey,
   jdcAuthoritySecretKey,
   jdcMonitoringPort,
@@ -74,7 +74,7 @@ ${upstreams}
 [template_provider_type.BitcoinCoreIpc]
 version = 31
 network = "${c.network}"
-data_dir = "${bitcoindIpcDataDir}"
+data_dir = "${jdcDataDir}"
 fee_threshold = 100
 min_interval = 5
 `

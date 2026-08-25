@@ -7,7 +7,9 @@ import { generateJdcToml, JdcConfig } from './jdcConfig'
 import { i18n } from './i18n'
 import { sdk } from './sdk'
 import {
-  ipcSocketMountpoint,
+  bitcoindIpcMount,
+  bitcoindSocketName,
+  ipcSocketLink,
   jdcAuthorityPublicKey,
   jdcPort,
   stratumPort,
@@ -139,14 +141,28 @@ export const main = sdk.setupMain(async ({ effects }) => {
       .mountDependency<typeof bitcoinManifest>({
         dependencyId: 'bitcoind',
         volumeId: 'main',
-        subpath: 'ipc/bitcoin-core.sock',
-        mountpoint: ipcSocketMountpoint(store.bitcoinNetwork),
+        subpath: 'ipc',
+        mountpoint: bitcoindIpcMount,
         readonly: true,
       }),
     'sv2-sub',
   )
 
+  const socketLink = ipcSocketLink(store.bitcoinNetwork)
+
   return sdk.Daemons.of(effects)
+    .addOneshot('link-ipc-socket', {
+      subcontainer: sub,
+      exec: {
+        command: [
+          'sh',
+          '-c',
+          `mkdir -p "$(dirname "${socketLink}")" && ln -sfn "${bitcoindIpcMount}/${bitcoindSocketName}" "${socketLink}"`,
+        ],
+        user: 'root',
+      },
+      requires: [],
+    })
     .addDaemon('jdc', {
       subcontainer: sub,
       exec: {
@@ -162,7 +178,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
             errorMessage: i18n('The Job Declaration Client is not ready'),
           }),
       },
-      requires: [],
+      requires: ['link-ipc-socket'],
     })
     .addDaemon('translator', {
       subcontainer: sub,

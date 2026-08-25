@@ -43,7 +43,7 @@ A single image carries both upstream binaries, so the two daemons can share one 
 Subcontainers, one per mode:
 
 - **`translator-sub`** — Pool mode. Runs `/app/translator_sv2` alone.
-- **`sv2-sub`** — Solo and Job Declaration with Pool. Runs `/app/jd_client_sv2` and `/app/translator_sv2` together, which is what lets the translator reach the JD Client on `127.0.0.1`. Separate StartOS images would be separate network namespaces and could not.
+- **`sv2-sub`** — Solo and Job Declaration with Pool. Runs `/app/jd_client_sv2` and `/app/translator_sv2` together, which is what lets the translator reach the JD Client on `127.0.0.1`. Separate StartOS images would be separate network namespaces and could not. A `link-ipc-socket` oneshot runs first to place the symlink the JD Client's `data_dir` expects.
 
 Attach with `start-cli package attach stratum-v2 -n <subcontainer-name>`.
 
@@ -147,5 +147,5 @@ tasks:
   - { action: 'bitcoind:ipc', severity: critical }
 health_checks:
   - translator
-  - jdc
+  - jdc # sovereign modes only
 ```

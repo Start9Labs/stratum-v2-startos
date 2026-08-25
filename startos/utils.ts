@@ -18,14 +18,19 @@ export const jdcAuthorityPublicKey =
 export const jdcAuthoritySecretKey =
   'mkDLTBBRxdBv998612qipDYoTK3YUrqLe8uWw7gu3iXbSrn2n'
 
-// Where Bitcoin's IPC socket dir is mounted. The JD Client resolves the socket
-// as `${dataDir}/[network/]node.sock`.
-export const bitcoindIpcDataDir = '/mnt/bitcoind-ipc'
+// Bitcoin's IPC directory, mounted read-only. It holds `bitcoin-core.sock`,
+// but the JD Client resolves its socket as `${dataDir}/[network/]node.sock`, so
+// jdcDataDir holds a symlink under that name rather than being the mount itself.
+// A dependency mount can only be a directory: MountTarget.filetype is
+// skip_deserializing in start-core, so mounting the socket directly is rejected.
+export const bitcoindIpcMount = '/mnt/bitcoind-ipc'
+export const bitcoindSocketName = 'bitcoin-core.sock'
+export const jdcDataDir = '/data/ipc'
 
 export type BitcoinNetwork = 'mainnet' | 'testnet4' | 'signet' | 'regtest'
 
-export function ipcSocketMountpoint(network: BitcoinNetwork): string {
+export function ipcSocketLink(network: BitcoinNetwork): string {
   return network === 'mainnet'
-    ? `${bitcoindIpcDataDir}/node.sock`
-    : `${bitcoindIpcDataDir}/${network}/node.sock`
+    ? `${jdcDataDir}/node.sock`
+    : `${jdcDataDir}/${network}/node.sock`
 }
