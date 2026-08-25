@@ -51,10 +51,10 @@ Attach with `start-cli package attach stratum-v2 -n <subcontainer-name>`.
 
 One volume holds everything the package owns. The Bitcoin IPC socket is mounted in from the dependency in the sovereign modes only.
 
-| Volume          | Mount point                               | Purpose                                                                                    |
-| --------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `main`          | `/data`                                   | `store.json`, plus the generated `translator.toml` and `jdc.toml`                          |
-| `bitcoind:main` | `/mnt/bitcoind-ipc[/<network>]/node.sock` | Bitcoin's IPC socket, read-only; the JD Client's `data_dir` points at the parent directory |
+| Volume          | Mount point         | Purpose                                                                                                                                                                                                             |
+| --------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `main`          | `/data`             | `store.json`, plus the generated `translator.toml` and `jdc.toml`                                                                                                                                                   |
+| `bitcoind:main` | `/mnt/bitcoind-ipc` | Bitcoin's IPC directory, read-only — it holds only the socket. The JD Client resolves its socket as `<data_dir>/[network/]node.sock`, so a oneshot symlinks that name under `/data/ipc` and `data_dir` points there |
 
 ## File Models
 
