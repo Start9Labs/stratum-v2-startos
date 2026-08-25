@@ -1,146 +1,151 @@
 <p align="center">
-  <img src="icon.svg" alt="Stratum V2 Logo" width="21%">
+  <img src="icon.png" alt="Stratum V2 Logo" width="21%">
 </p>
 
 # Stratum V2 on StartOS
 
-> **Upstream repo:** <https://github.com/stratum-mining/sv2-apps>
+> Everything not listed in this document should behave the same as upstream
+> Stratum V2. If a feature, setting, or behavior is not mentioned here, the
+> upstream documentation is accurate and fully applicable — see the
+> Documentation section of `instructions.md` for links.
 
-Runs the Stratum Reference Implementation (SRI) mining apps as native StartOS daemons. It accepts connections from legacy SV1 miners (Bitaxe, Antminer, etc.) and translates them to Stratum V2, in one of three modes:
-
-- **Pool** — translate your miners to an external Stratum V2 pool.
-- **Solo (Sovereign)** — mine solo to your **own Bitcoin Core node**: the JD Client pulls block templates from Bitcoin Core over IPC and the reward goes to your address. No pool.
-- **Job Declaration with Pool** — you build your **own block templates** from your node and *declare* them to a pool (which still handles payout/variance). Sovereign job selection while pooling.
-
-No nested Docker, no runtime image pulls — the official multi-arch SRI binaries are baked into the s9pk and run directly; StartOS generates their TOML config.
+Packages the miner-side applications of the [Stratum Reference Implementation](https://github.com/stratum-mining/sv2-apps) — the Translator Proxy and the Job Declarator Client — as native StartOS daemons. One package covers three mining topologies, selected by a single Configure action; StartOS renders each daemon's TOML from the stored answers.
 
 ---
 
 ## Table of Contents
 
-- [Architecture](#architecture)
 - [Image and Container Runtime](#image-and-container-runtime)
 - [Volume and Data Layout](#volume-and-data-layout)
-- [Configuration Management](#configuration-management)
-- [Network Access and Interfaces](#network-access-and-interfaces)
-- [Actions](#actions)
-- [Health Checks](#health-checks)
+- [File Models](#file-models)
 - [Dependencies](#dependencies)
+- [Network Access and Interfaces](#network-access-and-interfaces)
+- [Installation and First-Run Flow](#installation-and-first-run-flow)
+- [Actions](#actions)
+- [Tasks](#tasks)
+- [Health Checks](#health-checks)
+- [Backups and Restore](#backups-and-restore)
 - [Limitations and Differences](#limitations-and-differences)
 - [Quick Reference for AI Consumers](#quick-reference-for-ai-consumers)
 
 ---
 
-## Architecture
-
-The image bundles both SRI binaries — `translator_sv2` and `jd_client_sv2` — built from the official `v0.4.0` images.
-
-- **Pool mode:** one daemon, `translator_sv2`, whose upstream is the external pool.
-- **Job-declaration modes (solo / jd-pool):** two daemons, `jd_client_sv2` + `translator_sv2`, **sharing one subcontainer** (hence one network namespace) so the translator reaches the JD Client at `127.0.0.1:34265`. The translator's upstream is the local JDC; the JDC's template provider is Bitcoin Core over its IPC socket. The JDC runs `SOLOMINING` (solo) or `FULLTEMPLATE` with the pool's JD server (jd-pool).
-
-All config is rendered by `setupMain` from `store.json` into exact TOML **strings** (the Rust binaries' `f64` fields reject bare integers, so floats like `6.0` must be preserved — a generic TOML serializer would corrupt them).
-
----
-
 ## Image and Container Runtime
 
-| Property      | Value                                                            |
-| ------------- | ---------------------------------------------------------------- |
-| Image         | Built from `Dockerfile` (FROM `stratumv2/translator_sv2:v0.4.0` + `jd_client_sv2` binary) |
-| Binaries      | `/app/translator_sv2`, `/app/jd_client_sv2` (run with `-c <toml>`) |
-| Architectures | x86_64, aarch64                                                  |
+A single image carries both upstream binaries, so the two daemons can share one subcontainer and therefore one network namespace.
 
----
+| Property      | Value                                                                                                    |
+| ------------- | -------------------------------------------------------------------------------------------------------- |
+| Image source  | `Dockerfile`, copying `jd_client_sv2` out of its official image into the official `translator_sv2` image |
+| Architectures | x86_64, aarch64                                                                                          |
+| Entrypoint    | Not used — each daemon runs its binary directly with `-c <toml>`                                         |
+
+Subcontainers, one per mode:
+
+- **`translator-sub`** — Pool mode. Runs `/app/translator_sv2` alone.
+- **`sv2-sub`** — Solo and Job Declaration with Pool. Runs `/app/jd_client_sv2` and `/app/translator_sv2` together, which is what lets the translator reach the JD Client on `127.0.0.1`. Separate StartOS images would be separate network namespaces and could not.
+
+Attach with `start-cli package attach stratum-v2 -n <subcontainer-name>`.
 
 ## Volume and Data Layout
 
-| Volume                   | Mount Point         | Purpose                                                    |
-| ------------------------ | ------------------- | --------------------------------------------------------- |
-| `main`                   | `/data`             | `store.json` (config), generated `translator.toml` / `jdc.toml` |
-| `bitcoind:main` (sovereign) | `/mnt/bitcoind-ipc[/<net>]/node.sock` | Bitcoin Core IPC socket, mounted read-only; JDC `data_dir` points here |
+One volume holds everything the package owns. The Bitcoin IPC socket is mounted in from the dependency in the sovereign modes only.
 
----
+| Volume          | Mount point                               | Purpose                                                                                    |
+| --------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `main`          | `/data`                                   | `store.json`, plus the generated `translator.toml` and `jdc.toml`                          |
+| `bitcoind:main` | `/mnt/bitcoind-ipc[/<network>]/node.sock` | Bitcoin's IPC socket, read-only; the JD Client's `data_dir` points at the parent directory |
 
-## Configuration Management
+## File Models
 
-The **Configure** action picks a **Mining Mode** (`Value.union`) and writes `store.json`:
+The package owns all three files on the volume. Only `store.json` records user intent; the two TOMLs are rendered artifacts and a hand edit to either is discarded.
 
-**Pool mode:** Pool Address, Pool Port, Pool Authority Public Key.
-**Solo mode:** Bitcoin Network, Coinbase Reward Address, Coinbase Signature.
-**JD with Pool mode:** the Pool fields + JD Server Port + the Solo fields (coinbase address is the solo fallback payout).
-**Common:** Username/Worker, Starting Hashrate Estimate (TH/s), Shares Per Minute, Extranonce2 Size, Aggregate Channels.
-
-A critical install task (`require-configure`) blocks startup until Configure runs; the handler clears it.
-
----
-
-## Network Access and Interfaces
-
-| Interface     | Port  | Protocol  | Purpose                                          |
-| ------------- | ----- | --------- | ------------------------------------------------ |
-| Stratum       | 34255 | TCP (raw) | SV1 miners connect here (`stratum+tcp://…`)        |
-| Monitoring API| 9092  | HTTP      | Translator's read-only hashrate/share stats       |
-
-The JD Client's downstream (34265) and monitoring (9091) ports stay internal to the subcontainer.
-
----
-
-## Actions
-
-| Action | Purpose |
-| ------ | ------- |
-| Configure | Choose mining mode and connection details; clears the install-time setup task. |
-
----
-
-## Health Checks
-
-| Check                  | Mode      | Method                 |
-| ---------------------- | --------- | ---------------------- |
-| Stratum Server         | both      | Port listening (34255) |
-| Job Declaration Client | sovereign | Port listening (34265) |
-
-The translator only opens 34255 after its upstream connects, so these go green once the full chain (pool, or Bitcoin Core → JDC) is up.
-
----
+- **`store.json`** — every answer the Configure action collects, and the only source of user intent. Written by the action, read reactively by `main`, so saving it restarts the daemons with the new settings.
+- **`translator.toml`** and **`jdc.toml`** — regenerated from `store.json` on every start and overwritten wholesale. They are modelled as opaque strings rather than TOML documents because upstream types several fields as `f32` and rejects a bare integer where a float is expected; a general-purpose serializer emits `6` for `6.0` and the binary refuses to start. `jdc.toml` exists only in the sovereign modes.
 
 ## Dependencies
 
-**`bitcoind` — optional, conditional.** Pool mode is standalone. When `store.json` mode is `solo` or `jd-pool`, `setupDependencies` declares `bitcoind` (`running`, `versionRange >=31.0:0` — IPC is on the Core 31.x branch) and fires a task enforcing its `ipc` action (`enableIpc: true`). `setupMain` then mounts the IPC socket read-only and `checkDependencies().throwIfNotSatisfied()` blocks start until Bitcoin Core is installed, running, and IPC-enabled.
+**`bitcoind`, optional and conditional.** Pool mode declares no dependency at all and runs standalone. Selecting Solo or Job Declaration with Pool makes the dependency appear: the JD Client builds block templates from your own node over its IPC socket, so the package requires Bitcoin running and healthy, mounts its IPC socket read-only, and blocks startup until both hold. It also raises a task on Bitcoin to turn IPC on. IPC is a Bitcoin Core feature; the declared version range admits only the flavors and versions that carry it.
 
----
+## Network Access and Interfaces
+
+Two interfaces, both bound directly by the daemons.
+
+| Interface      | Id           | Type  | Port  | Purpose                                                        |
+| -------------- | ------------ | ----- | ----- | -------------------------------------------------------------- |
+| Stratum        | `stratum`    | `p2p` | 34255 | Raw TCP. SV1 miners connect here; the scheme is `stratum+tcp`  |
+| Monitoring API | `monitoring` | `api` | 9092  | The Translator Proxy's read-only hashrate and share statistics |
+
+The JD Client's downstream listener (34265) and its own monitoring server (9091) are not exported — the listener binds `127.0.0.1` and is reachable only by the translator sharing its network namespace.
+
+## Installation and First-Run Flow
+
+Nothing runs until the user has answered Configure, because there is no defensible default for a pool address or a payout address.
+
+Install raises a critical task pointing at Configure, which suspends the ordinary controls until it is answered. Running Configure writes `store.json` and clears the task, at which point the service can start. In the sovereign modes the dependency's own task appears on Bitcoin's page and must be completed there before this service will start.
+
+## Actions
+
+One action, which is also the package's entire configuration surface.
+
+**Configure.** Run it to choose a mining mode, and again whenever pool details, payout address, or difficulty tuning change. It writes `store.json` and nothing else — no daemon is touched directly. It is idempotent and safe to repeat, returns immediately, and prefills from the current stored answers. Because `main` reads `store.json` reactively, saving a change restarts the daemons, which drops connected miners for a few seconds while they reconnect. It is allowed in any service status and clears the install-time setup task.
+
+## Tasks
+
+The package raises one task of its own and one on its dependency.
+
+- **Configure this service** — raised once, on install, at `critical` severity, because the daemons cannot start without a pool or payout address. Cleared by running Configure. It does not return.
+- **Enable IPC on Bitcoin** — raised on the Bitcoin service's page, at `critical` severity, whenever the mode is Solo or Job Declaration with Pool and Bitcoin's IPC setting is off. Cleared by running Bitcoin's own IPC action. It returns if IPC is later switched back off, and disappears entirely if the mode is changed back to Pool.
+
+## Health Checks
+
+Both checks probe a listening port, so each answers "did this daemon get far enough to serve" rather than "is it mining".
+
+- **Stratum Server** (15s grace) — the Translator Proxy opens its downstream port only after an upstream connection succeeds, so a red check most often means the upstream is unreachable rather than that the translator crashed: check the pool address and authority key in Pool mode, or the Job Declaration Client check in the sovereign modes. The logs name the failing upstream directly.
+- **Job Declaration Client** (30s grace, sovereign modes only) — red means the JD Client is not yet listening, which in practice means it has not reached Bitcoin over IPC. Confirm Bitcoin is running with IPC enabled and on the same network the Configure action names; a network mismatch points the client at a socket path that does not exist.
+
+The translator daemon requires the JD Client, so in the sovereign modes a red JD Client check holds the translator down rather than letting it fail against an absent upstream.
+
+## Backups and Restore
+
+The `main` volume is copied wholesale, so a restored instance comes back with its configuration intact and starts mining again as soon as its dependency is satisfied. There is no database and no state worth preserving beyond the configuration — shares and hashrate statistics are in-memory and reset on every start, by upstream's design.
 
 ## Limitations and Differences
 
-1. **Solo and JD-with-pool modes require Bitcoin Core 31.x** (IPC support) installed on the same server.
-2. **No bundled web dashboard.** Upstream's `sv2-ui` (a Docker control-plane) is not used; monitoring is via the health checks, the Monitoring API, and logs.
-3. **JD-with-pool needs a pool that runs a JD server (JDS).** Not all Stratum V2 pools do.
+1. **Miner-side only.** This packages the Translator Proxy and the Job Declarator Client. Upstream's pool-side applications — the SV2 Pool server and the Job Declaration Server — are not included.
+2. **No bundled dashboard.** Upstream's separate `sv2-ui` project is a Docker control-plane that spawns these binaries as containers; StartOS runs them directly instead, so that UI has nothing to drive. Monitoring is the health checks, the Monitoring API, and the logs.
+3. **The sovereign modes need Bitcoin with IPC on the same server.** They cannot use a remote node.
+4. **Job Declaration with Pool needs a pool that runs a Job Declaration Server.** Not all Stratum V2 pools do.
+5. **ASIC telemetry is off.** Upstream can scan a LAN subnet for miner web APIs to enrich its monitoring output; this package configures no subnet, so it never scans your network.
 
 ---
 
 ## Quick Reference for AI Consumers
 
 ```yaml
-package_id: stratum-v2
-image: Dockerfile (stratumv2/translator_sv2:v0.4.0 + jd_client_sv2 binary)  # multi-arch, baked in
+package_id: 'stratum-v2'
+image: Dockerfile # stratumv2/translator_sv2 + jd_client_sv2 binary
 architectures: [x86_64, aarch64]
-modes:
-  pool:    { daemons: [translator], upstream: external pool }
-  solo:    { daemons: [jdc, translator], shared_subcontainer: true, jdc_mode: SOLOMINING, template_provider: bitcoind-ipc }
-  jd-pool: { daemons: [jdc, translator], shared_subcontainer: true, jdc_mode: FULLTEMPLATE, upstreams: pool+jds, template_provider: bitcoind-ipc }
-binaries: /app/translator_sv2 -c /data/translator.toml ; /app/jd_client_sv2 -c /data/jdc.toml
+subcontainers:
+  - translator-sub # pool mode
+  - sv2-sub # solo and jd-pool modes
 volumes:
-  main: /data            # store.json + generated *.toml
-ports:
-  stratum: 34255         # raw TCP, miners
-  monitoring: 9092       # HTTP stats (translator)
-  jdc: 34265             # internal (sovereign), localhost only
-config: Configure action (Value.union mode select) -> store.json
-require_setup: critical own-task 'require-configure'
-dependencies:
-  bitcoind:              # only when mode in (solo, jd-pool)
-    optional: true
-    versionRange: ">=31.0:0"
-    enforces: { action: ipc, enableIpc: true }
-    mount: bitcoind:main/ipc/bitcoin-core.sock -> /mnt/bitcoind-ipc[/<net>]/node.sock (ro)
+  main: /data
+file_models:
+  - store.json
+  - translator.toml
+  - jdc.toml
+startos_managed_env_vars: []
+dependencies: [bitcoind] # only when mode is solo or jd-pool
+interfaces:
+  stratum: { type: p2p, port: 34255 }
+  monitoring: { type: api, port: 9092 }
+actions:
+  - configure
+tasks:
+  - { action: configure, severity: critical }
+  - { action: 'bitcoind:ipc', severity: critical }
+health_checks:
+  - translator
+  - jdc
 ```

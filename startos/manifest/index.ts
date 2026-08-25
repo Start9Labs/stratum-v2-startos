@@ -1,5 +1,5 @@
 import { setupManifest } from '@start9labs/start-sdk'
-import { long, short } from './i18n'
+import { bitcoinDescription, long, short } from './i18n'
 
 export const manifest = setupManifest({
   id: 'stratum-v2',
@@ -17,21 +17,12 @@ export const manifest = setupManifest({
       arch: ['x86_64', 'aarch64'],
     },
   },
-  alerts: {
-    install: null,
-    update: null,
-    uninstall: null,
-    restore: null,
-    start: null,
-    stop: null,
-  },
   dependencies: {
     bitcoind: {
-      description:
-        'Required only for Sovereign (solo) mode, which builds block templates from your own node over its IPC socket.',
+      description: bitcoinDescription,
       optional: true,
       metadata: {
-        title: 'Bitcoin Core',
+        title: 'Bitcoin',
         icon: 'https://raw.githubusercontent.com/Start9Labs/bitcoin-core-startos/feec0b1dae42961a257948fe39b40caf8672fce1/dep-icon.svg',
       },
     },

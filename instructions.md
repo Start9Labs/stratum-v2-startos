@@ -1,50 +1,45 @@
 # Stratum V2
 
-This service connects your existing miners — which speak the older Stratum V1 protocol (Bitaxe, Antminer, most ASICs) — to **Stratum V2**, in one of three modes:
+## Documentation
 
-- **Pool** — your miners mine to a Stratum V2 **pool**.
-- **Solo (Sovereign)** — your miners mine to **your own Bitcoin Core node**, with the block reward going to your address. No pool.
-- **Job Declaration with Pool** — you build your **own block templates** from your node and declare them to a pool, while the pool still handles payouts. Best of both: you choose the transactions, the pool smooths your income.
+- [Translator Proxy reference](https://github.com/stratum-mining/sv2-apps/blob/main/miner-apps/translator/README.md) — the SV1-to-SV2 translator's own documentation and full configuration reference.
+- [Job Declarator Client reference](https://github.com/stratum-mining/sv2-apps/blob/main/miner-apps/jd-client/README.md) — how job declaration and solo mining work.
+- [Stratum V2 specification](https://stratumprotocol.org/specification/) — the protocol itself.
+
+## What you get on StartOS
+
+Your existing miners speak Stratum V1 (Bitaxe, Antminer, and most ASICs). This service sits between them and Stratum V2, in one of three modes:
+
+- **Pool** — your miners mine to a Stratum V2 pool.
+- **Solo (Sovereign)** — your miners mine to your own Bitcoin node, and the block reward goes to your address. No pool.
+- **Job Declaration with Pool** — you build your own block templates from your node and declare them to a pool, while the pool still handles payouts. You choose the transactions; the pool smooths your income.
+
+Two interfaces are exposed: **Stratum**, which your miners connect to, and a read-only **Monitoring API** with hashrate and share statistics.
 
 ## Getting set up
 
-After installing, you'll see a **Configure** task — the service won't start until you complete it. Open **Configure** and pick a **Mining Mode**.
+Solo and Job Declaration with Pool both mine from your own node, so **install Bitcoin first** — a version with IPC support. Pool mode needs no Bitcoin node.
 
-### Pool mode
+1. Open the **Configure** task shown after install and choose a **Mining Mode**.
+2. Fill in the fields for that mode:
+   - **Pool** — the pool's address, port, and authority public key (pools publish this), plus a username or worker name, often your payout address.
+   - **Solo (Sovereign)** — the Bitcoin network your node runs on, the address that should receive the block reward, and a short coinbase signature.
+   - **Job Declaration with Pool** — the pool fields above plus the pool's Job Declaration Server port, and the Solo fields; the reward address is used as a solo fallback payout.
+3. Save. In the two sovereign modes, StartOS raises a task on Bitcoin asking you to enable its IPC socket — complete it, then start Bitcoin.
+4. Start Stratum V2.
+5. Copy the **Stratum** address from the Interfaces tab and set it as the pool URL in each miner's settings.
 
-You need a Stratum V2 pool and three details from it: the pool **address** and **port**, and the pool's **authority public key** (pools publish this). Also set a **username/worker** (often your payout address). Save and start.
+## Using Stratum V2
 
-### Solo (sovereign) mode
+### Monitoring
 
-You need **Bitcoin Core (version 31.x)** installed and running on this server. In Configure, choose Solo and set:
+The **Stratum Server** health check turns green once the upstream connection is established and your miners can connect; in the sovereign modes the **Job Declaration Client** check turns green once it is receiving templates from your node. The **Monitoring API** interface serves hashrate and share statistics, and the service logs show miners connecting and shares being submitted.
 
-- **Bitcoin Network** — must match your node (usually Mainnet).
-- **Coinbase Reward Address** — the Bitcoin address that receives the block reward.
-- **Coinbase Signature** — any short label embedded in your blocks.
+### Configure
 
-When you start, this service automatically asks Bitcoin Core to enable its IPC socket and won't start until Bitcoin Core is running with IPC on — you'll see a dependency note if anything's missing.
-
-### Job Declaration with Pool mode
-
-Also needs **Bitcoin Core 31.x** running here, **and** a pool that runs a Job Declaration server. In Configure, choose this mode and set both the **pool** details (address, port, authority key, and the pool's **JD Server Port** — often 3334) and the **Bitcoin Network**, a **Coinbase Reward Address** (used as a solo fallback), and a **Coinbase Signature**. Same Bitcoin Core IPC requirement as Solo mode.
-
-## Connecting your miners
-
-1. Open this service's **Interfaces** tab and copy the **Stratum** address — it looks like `stratum+tcp://<your-server>:34255`.
-2. In each miner's settings, set the pool/stratum URL to that address and save. Use the `.local` address for miners on your home network.
-
-## Monitoring
-
-- The **Stratum Server** (and, in sovereign mode, **Job Declaration Client**) health checks turn green once everything is connected.
-- The **Monitoring API** interface exposes read-only hashrate and share stats.
-- Service **Logs** show miners connecting and shares being submitted.
-
-## Changing settings
-
-Re-run **Configure** any time to switch modes or change details; the service restarts with the new settings.
+Run **Configure** again at any time to switch modes or change connection details. The service picks up the new settings and reconnects.
 
 ## Limitations
 
-- Solo and JD-with-pool modes need **Bitcoin Core 31.x** on the same server.
-- JD-with-pool also needs a pool that runs a Job Declaration server (not all pools do).
-- There's no built-in web dashboard; monitoring is via the health checks, the Monitoring API, and logs.
+- The sovereign modes require a Bitcoin version with IPC support, running on this same server.
+- Job Declaration with Pool additionally requires a pool that runs a Job Declaration Server; not all Stratum V2 pools do.

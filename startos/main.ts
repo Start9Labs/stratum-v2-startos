@@ -4,6 +4,7 @@ import { translatorToml } from './fileModels/translatorToml'
 import { jdcToml } from './fileModels/jdcToml'
 import { generateTranslatorToml } from './translatorConfig'
 import { generateJdcToml, JdcConfig } from './jdcConfig'
+import { i18n } from './i18n'
 import { sdk } from './sdk'
 import {
   ipcSocketMountpoint,
@@ -30,7 +31,9 @@ export const main = sdk.setupMain(async ({ effects }) => {
 
   if (store.mode === 'pool') {
     if (!store.poolAddress || !store.poolPort || !store.poolAuthorityPubkey) {
-      throw new Error('Pool mode requires pool address, port, and authority key.')
+      throw new Error(
+        'Pool mode requires pool address, port, and authority key.',
+      )
     }
     await translatorToml.write(
       effects,
@@ -41,7 +44,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
       }),
     )
 
-    const sub = await sdk.SubContainer.of(
+    const sub = sdk.SubContainer.of(
       effects,
       { imageId: 'sv2' },
       sdk.Mounts.of().mountVolume({
@@ -55,23 +58,25 @@ export const main = sdk.setupMain(async ({ effects }) => {
 
     return sdk.Daemons.of(effects).addDaemon('translator', {
       subcontainer: sub,
-      exec: { command: ['/app/translator_sv2', '-c', '/data/translator.toml'], cwd: '/app' },
+      exec: {
+        command: ['/app/translator_sv2', '-c', '/data/translator.toml'],
+        cwd: '/app',
+      },
       ready: {
-        display: 'Stratum Server',
+        display: i18n('Stratum Server'),
         gracePeriod: 15_000,
         fn: () =>
           sdk.healthCheck.checkPortListening(effects, stratumPort, {
-            successMessage: 'The Stratum server is ready',
-            errorMessage: 'The Stratum server is not ready',
+            successMessage: i18n('The Stratum server is ready'),
+            errorMessage: i18n('The Stratum server is not ready'),
           }),
       },
       requires: [],
     })
   }
 
-  // Job-declaration modes (solo / jd-pool): JD Client + Translator share one
-  // subcontainer so the translator reaches the JDC at 127.0.0.1. The JDC builds
-  // templates from Bitcoin Core over its IPC socket (mounted from bitcoind).
+  // The JD Client and the translator share one subcontainer, and so one network
+  // namespace: the translator reaches the JD Client at 127.0.0.1.
   if (!store.coinbaseRewardAddress) {
     throw new Error('Job-declaration modes require a coinbase reward address.')
   }
@@ -80,8 +85,14 @@ export const main = sdk.setupMain(async ({ effects }) => {
   const jdcConfig: JdcConfig =
     store.mode === 'jd-pool'
       ? (() => {
-          if (!store.poolAddress || !store.poolPort || !store.poolAuthorityPubkey) {
-            throw new Error('JD-with-pool mode requires pool address, port, and authority key.')
+          if (
+            !store.poolAddress ||
+            !store.poolPort ||
+            !store.poolAuthorityPubkey
+          ) {
+            throw new Error(
+              'JD-with-pool mode requires pool address, port, and authority key.',
+            )
           }
           return {
             kind: 'jd-pool',
@@ -115,7 +126,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
     }),
   )
 
-  const sub = await sdk.SubContainer.of(
+  const sub = sdk.SubContainer.of(
     effects,
     { imageId: 'sv2' },
     sdk.Mounts.of()
@@ -138,28 +149,34 @@ export const main = sdk.setupMain(async ({ effects }) => {
   return sdk.Daemons.of(effects)
     .addDaemon('jdc', {
       subcontainer: sub,
-      exec: { command: ['/app/jd_client_sv2', '-c', '/data/jdc.toml'], cwd: '/app' },
+      exec: {
+        command: ['/app/jd_client_sv2', '-c', '/data/jdc.toml'],
+        cwd: '/app',
+      },
       ready: {
-        display: 'Job Declaration Client',
+        display: i18n('Job Declaration Client'),
         gracePeriod: 30_000,
         fn: () =>
           sdk.healthCheck.checkPortListening(effects, jdcPort, {
-            successMessage: 'The JD Client is ready',
-            errorMessage: 'The JD Client is not ready',
+            successMessage: i18n('The Job Declaration Client is ready'),
+            errorMessage: i18n('The Job Declaration Client is not ready'),
           }),
       },
       requires: [],
     })
     .addDaemon('translator', {
       subcontainer: sub,
-      exec: { command: ['/app/translator_sv2', '-c', '/data/translator.toml'], cwd: '/app' },
+      exec: {
+        command: ['/app/translator_sv2', '-c', '/data/translator.toml'],
+        cwd: '/app',
+      },
       ready: {
-        display: 'Stratum Server',
+        display: i18n('Stratum Server'),
         gracePeriod: 15_000,
         fn: () =>
           sdk.healthCheck.checkPortListening(effects, stratumPort, {
-            successMessage: 'The Stratum server is ready',
-            errorMessage: 'The Stratum server is not ready',
+            successMessage: i18n('The Stratum server is ready'),
+            errorMessage: i18n('The Stratum server is not ready'),
           }),
       },
       requires: ['jdc'],

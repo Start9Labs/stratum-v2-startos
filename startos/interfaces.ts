@@ -1,3 +1,4 @@
+import { i18n } from './i18n'
 import { sdk } from './sdk'
 import { monitoringPort, stratumPort } from './utils'
 
@@ -10,9 +11,9 @@ export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
     secure: { ssl: false },
   })
   const stratum = sdk.createInterface(effects, {
-    name: 'Stratum',
+    name: i18n('Stratum'),
     id: 'stratum',
-    description: 'Point your SV1 miners here (stratum+tcp).',
+    description: i18n('Point your SV1 miners here.'),
     type: 'p2p',
     masked: false,
     schemeOverride: { ssl: 'stratum+tcp', noSsl: 'stratum+tcp' },
@@ -26,9 +27,11 @@ export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
     protocol: 'http',
   })
   const monitoring = sdk.createInterface(effects, {
-    name: 'Monitoring API',
+    name: i18n('Monitoring API'),
     id: 'monitoring',
-    description: 'Read-only HTTP API exposing hashrate and share stats.',
+    description: i18n(
+      'Read-only HTTP API exposing hashrate and share statistics.',
+    ),
     type: 'api',
     masked: false,
     schemeOverride: null,
