@@ -21,7 +21,7 @@ done
 ## Applying the bump
 
 1. Set the new tag on both `FROM` lines in `Dockerfile`, and set `version` in `startos/versions/current.ts` to `<upstream>:0`.
-2. **Diff the config schema.** Upstream moves fields between releases without deprecation — `user_identity` has changed nesting, and `template_provider_type.BitcoinCoreIpc` has gained required fields. `startos/translatorConfig.ts` and `startos/jdcConfig.ts` render those files as literal strings, so a schema change is silent until the daemon refuses to start. The authority is the serde structs, not the example configs:
+2. **Diff the config schema.** Upstream moves fields between releases without deprecation — `user_identity` has changed nesting, and `template_provider_type.BitcoinCoreIpc` has gained required fields. `generateTranslatorToml` in `startos/utils.ts` and `startos/jdcConfig.ts` render those files as literal strings, so a schema change is silent until the daemon refuses to start. The authority is the serde structs, not the example configs:
 
    - `miner-apps/translator/src/lib/config.rs` — `TranslatorConfig`, `Upstream`, `DownstreamDifficultyConfig`
    - `miner-apps/jd-client/src/lib/config.rs` — `JobDeclaratorClientConfig`, `Upstream`
