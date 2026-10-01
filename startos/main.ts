@@ -2,13 +2,13 @@ import { manifest as bitcoinManifest } from 'bitcoin-core-startos/startos/manife
 import { storeJson } from './fileModels/storeJson'
 import { translatorToml } from './fileModels/translatorToml'
 import { jdcToml } from './fileModels/jdcToml'
-import { generateTranslatorToml } from './translatorConfig'
 import { generateJdcToml, JdcConfig } from './jdcConfig'
 import { i18n } from './i18n'
 import { sdk } from './sdk'
 import {
   bitcoindIpcMount,
   bitcoindSocketName,
+  generateTranslatorToml,
   ipcSocketLink,
   jdcAuthorityPublicKey,
   jdcPort,
