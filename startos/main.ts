@@ -1,4 +1,5 @@
 import { manifest as bitcoinManifest } from 'bitcoin-core-startos/startos/manifest'
+import { dependencies } from './dependencies'
 import { storeJson } from './fileModels/storeJson'
 import { translatorToml } from './fileModels/translatorToml'
 import { jdcToml } from './fileModels/jdcToml'
@@ -82,7 +83,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
   if (!store.coinbaseRewardAddress) {
     throw new Error('Job-declaration modes require a coinbase reward address.')
   }
-  await sdk.checkDependencies(effects).then((r) => r.throwIfNotSatisfied())
+  await dependencies.check(effects).then((r) => r.throwIfNotSatisfied())
 
   const jdcConfig: JdcConfig =
     store.mode === 'jd-pool'
