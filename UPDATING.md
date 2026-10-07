@@ -36,6 +36,6 @@ done
      -v "$PWD/translator.toml:/cfg.toml:ro" stratumv2/translator_sv2:<tag> -c /cfg.toml
    ```
 
-   The JD Client logs the IPC socket path it resolved; check it matches `ipcSocketMountpoint()` in `startos/utils.ts` for a non-mainnet network as well as mainnet.
+   The JD Client logs the IPC socket path it resolved; check it matches `ipcSocketLink()` in `startos/utils.ts` for a non-mainnet network as well as mainnet.
 
 4. If the IPC schema version in `jdcConfig.ts` or the Bitcoin versions upstream accepts have moved, update `versionRange` in `startos/dependencies.ts` to match.

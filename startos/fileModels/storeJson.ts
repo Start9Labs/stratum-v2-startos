@@ -1,7 +1,7 @@
 import { FileHelper, z } from '@start9labs/start-sdk'
 import { sdk } from '../sdk'
 
-const shape = z.object({
+const shape = z.looseObject({
   mode: z.enum(['pool', 'solo', 'jd-pool']).nullable().catch(null),
 
   // Pool fields (used by 'pool' and 'jd-pool')
