@@ -18,7 +18,7 @@ Two interfaces are exposed: **Stratum**, which your miners connect to, and a rea
 
 ## Getting set up
 
-Solo and Job Declaration with Pool both mine from your own node, so **install Bitcoin first** — a version with IPC support. Pool mode needs no Bitcoin node.
+Solo and Job Declaration with Pool both mine from your own node, so **install Bitcoin 31.0:12 or later first**. Pool mode needs no Bitcoin node.
 
 1. Open the **Configure** task shown after install and choose a **Mining Mode**.
 2. Fill in the fields for that mode:

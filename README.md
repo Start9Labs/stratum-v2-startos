@@ -65,7 +65,7 @@ The package owns all three files on the volume. Only `store.json` records user i
 
 ## Dependencies
 
-**`bitcoind`, optional and conditional.** Pool mode declares no dependency at all and runs standalone. Selecting Solo or Job Declaration with Pool makes the dependency appear: the JD Client builds block templates from your own node over its IPC socket, so the package requires Bitcoin running and healthy, mounts its IPC socket read-only, and blocks startup until both hold. It also raises a task on Bitcoin to turn IPC on. IPC is a Bitcoin Core feature; the declared version range admits only the flavors and versions that carry it.
+**`bitcoind`, optional and conditional — Bitcoin 31.0:12 or later.** Pool mode declares no dependency at all and runs standalone. Selecting Solo or Job Declaration with Pool makes the dependency appear: the JD Client builds block templates from your own node over its IPC socket, so the package requires Bitcoin running and healthy, mounts its IPC socket read-only, and blocks startup until both hold. It also raises a task on Bitcoin to turn IPC on. IPC is a Bitcoin Core feature; the declared version range admits only the flavors and versions that carry it.
 
 ## Network Access and Interfaces
 
