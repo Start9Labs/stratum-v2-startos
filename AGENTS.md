@@ -12,9 +12,16 @@ admin credentials", "expose a web UI") to the constructs, the reference pages, a
 package to copy. Find the recipe before you read this package's neighbours: a package you reach by
 grepping may be non-conformant, and the recipe outranks it.
 
+Freshly scaffolded? Work the
+[New Package Checklist](../start-technologies/projects/start-sdk/docs/src/new-package-checklist.md)
+(or <https://docs.start9.com/packaging/new-package-checklist.html>) from top to bottom. It is a
+guide page, not a file in this repo — read it, don't copy it in.
+
 Keep `README.md` (technical reference for an AI support or administering agent) and
-`instructions.md` (end-user docs) in sync with your changes. Upstream-version bumps have
-their own procedure in `UPDATING.md` — follow it rather than editing the `Dockerfile` tag alone.
+`instructions.md` (end-user docs) in sync with your changes. This file restates neither:
+whoever changes the package has both, so it carries only what they don't — repo mechanics,
+a change that looks right and is not, where the next thing gets added, a naming trap, a
+build or test invocation particular to this repo.
 
 **Fix a defect you spot rather than reporting it** — you have the package open and the
 context to be sure. File **a GitHub issue on this repo** only when the call isn't yours to
@@ -27,9 +34,7 @@ verified, tried, and decided belongs in the commit message and the PR body.
 
 ## This repo
 
-- **`translator.toml` and `jdc.toml` are rendered as literal strings, and must stay that way.** Upstream types `min_individual_miner_hashrate` and `shares_per_minute` as `f32` and rejects a bare integer where it wants a float. A TOML serializer emits `6` for `6.0` and the daemon refuses to start, so their generators (`generateTranslatorToml` in `utils.ts`, `generateJdcToml` in `jdcConfig.ts`) format floats by hand. Don't "improve" them into a `FileHelper.toml` model.
-- **In the sovereign modes both daemons must share one `SubContainer` instance.** The translator reaches the JD Client at `127.0.0.1`, which only holds inside one network namespace; two StartOS images would be two namespaces.
-- **The JD Client's `authority_secret_key` in `utils.ts` is upstream's published default, not a secret.** It authenticates a loopback connection inside a single subcontainer. Don't route it through `sdk.getSecret` or regenerate it — the translator's matching `authority_pubkey` is the other half of the same published pair.
-- **A dependency mount is always a directory, by design.** StartOS disabled file mounts on dependencies in alpha.16: `MountTarget.filetype` is `#[serde(skip_deserializing)]` and `SubContainer.mount` hardcodes `'directory'` for a pointer mount, so `mountDependency`'s `type` option is inert and binding the socket fails with `mount exited with exit status: 32`. Mount Bitcoin's `ipc` **directory** instead. The `link-ipc-socket` oneshot is needed either way — upstream hardcodes `node.sock` while bitcoind publishes `bitcoin-core.sock`, so something has to bridge the name.
-- **`ipcSocketLink()` must reproduce upstream's `[<network>/]node.sock` layout exactly.** Upstream appends that to `data_dir` itself, so a mismatch fails at connect time rather than at parse time.
-- **Verify a config change against the real binary, not against upstream's example TOMLs.** The examples contradict each other across modes and lag the serde structs. `UPDATING.md` has the one-line `docker run` that parses a rendered config without touching the network.
+- **Keep `translator.toml` and `jdc.toml` as hand-formatted strings; don't turn them into a `FileHelper.toml` model.** A TOML serializer writes `6` for `6.0`, and upstream's `f32` fields reject it, so the daemon refuses to start.
+- **In the sovereign modes both daemons share one `SubContainer` instance.** The translator reaches the JD Client at `127.0.0.1`, which holds only inside one network namespace.
+- **The JD Client's `authority_secret_key` in `utils.ts` is upstream's published default, not a secret.** Don't route it through `sdk.getSecret` or regenerate it: the translator's `authority_pubkey` is the other half of the same published pair.
+- **Mount Bitcoin's `ipc` directory, not its socket, and keep the `link-ipc-socket` oneshot.** A dependency mount is always a directory, and upstream looks for `<data_dir>/[<network>/]node.sock` while Bitcoin publishes `bitcoin-core.sock`; `ipcSocketLink()` must reproduce that layout exactly, or the JD Client fails at connect time.

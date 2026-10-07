@@ -15,7 +15,7 @@ const poolFields = {
   }),
   poolPort: Value.number({
     name: i18n('Pool Port'),
-    description: i18n('Stratum V2 port of the pool.'),
+    description: i18n("The pool's Stratum V2 port, not its SV1 port."),
     required: true,
     default: 34254,
     integer: true,
@@ -24,7 +24,9 @@ const poolFields = {
   }),
   poolAuthorityPubkey: Value.text({
     name: i18n('Pool Authority Public Key'),
-    description: i18n("The pool's Stratum V2 authority public key."),
+    description: i18n(
+      'Published by the pool alongside its Stratum V2 address. The connection uses it to verify that it reached that pool.',
+    ),
     required: true,
     default: null,
   }),
@@ -32,7 +34,9 @@ const poolFields = {
 
 const bitcoinNetwork = Value.select({
   name: i18n('Bitcoin Network'),
-  description: i18n('Must match the network your Bitcoin node runs on.'),
+  description: i18n(
+    'Must match the network your Bitcoin node runs on.\n- Mainnet: the real Bitcoin network\n- Testnet4: the public test network; its coins have no value\n- Signet: a test network whose blocks are signed by a central party; its coins have no value\n- Regtest: a private test network for development',
+  ),
   default: 'mainnet',
   values: {
     mainnet: i18n('Mainnet'),
@@ -62,7 +66,7 @@ export const inputSpec = InputSpec.of({
   connection: Value.union({
     name: i18n('Mining Mode'),
     description: i18n(
-      'Pool: translate your miners to an external Stratum V2 pool. Solo: mine to your own Bitcoin node. Job Declaration with Pool: build your own block templates and declare them to a pool. The latter two require Bitcoin with IPC enabled.',
+      '- Pool: mine on an external Stratum V2 pool, which builds the block templates and pays out\n- Solo (Sovereign): mine to your own Bitcoin node, with the block reward paid to your own address\n- Job Declaration with Pool: build block templates from your own Bitcoin node and declare them to a pool, which pays out\nSolo and Job Declaration with Pool require Bitcoin with IPC enabled.',
     ),
     default: 'pool',
     variants: Variants.of({
@@ -84,7 +88,7 @@ export const inputSpec = InputSpec.of({
           ...poolFields,
           jdsPort: Value.number({
             name: i18n('Job Declaration Server Port'),
-            description: i18n("The pool's Job Declaration Server port."),
+            description: null,
             required: true,
             default: 3334,
             integer: true,
@@ -118,7 +122,9 @@ export const inputSpec = InputSpec.of({
   }),
   sharesPerMinute: Value.number({
     name: i18n('Shares Per Minute'),
-    description: i18n('Target share submission rate per miner.'),
+    description: i18n(
+      "Vardiff adjusts each miner's difficulty so that it submits about this many shares per minute.",
+    ),
     required: true,
     default: 6,
     integer: false,
