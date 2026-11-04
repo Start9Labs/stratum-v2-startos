@@ -5,6 +5,7 @@ import {
   jdcAuthoritySecretKey,
   jdcMonitoringPort,
   jdcPort,
+  tomlFloat,
   workerHashrateExtension,
 } from './utils'
 
@@ -25,9 +26,6 @@ export type JdcConfig =
       poolPort: number
       jdsPort: number
     })
-
-const tomlFloat = (n: number): string =>
-  Number.isInteger(n) ? `${n}.0` : `${n}`
 
 // SOLOMINING mines to the user's own address with no pool; FULLTEMPLATE declares
 // user-built templates to a pool's JD server while the pool handles payout.
@@ -65,6 +63,7 @@ jdc_signature = "${c.jdcSignature}"
 coinbase_reward_script = "addr(${c.coinbaseRewardAddress})"
 
 supported_extensions = [${workerHashrateExtension}]
+supported_downstream_extensions = [${workerHashrateExtension}]
 
 monitoring_address = "0.0.0.0:${jdcMonitoringPort}"
 monitoring_cache_refresh_secs = 15

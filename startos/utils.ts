@@ -49,7 +49,7 @@ export type Upstream = {
   authorityPubkey: string
 }
 
-const tomlFloat = (n: number): string =>
+export const tomlFloat = (n: number): string =>
   Number.isInteger(n) ? `${n}.0` : `${n}`
 
 export function generateTranslatorToml(
