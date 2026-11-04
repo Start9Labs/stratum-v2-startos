@@ -1,18 +1,18 @@
 import { IMPOSSIBLE, VersionInfo } from '@start9labs/start-sdk'
 
 export const current = VersionInfo.of({
-  version: '0.8.0:2',
+  version: '0.9.0:0',
   releaseNotes: {
     en_US:
-      'Restarting Stratum V2 while it is still starting stops every process of the previous run.',
+      'Updated Stratum V2 to 0.9.0. Improves job declaration reliability, rejects invalid mining targets and hashrates, and fixes channel-state leaks. Full release notes: https://github.com/stratum-mining/sv2-apps/releases/tag/v0.9.0',
     es_ES:
-      'Reiniciar Stratum V2 mientras aún se está iniciando detiene todos los procesos de la ejecución anterior.',
+      'Stratum V2 actualizado a 0.9.0. Mejora la fiabilidad de la declaración de trabajos, rechaza objetivos y tasas de hash de minería no válidos y corrige fugas de estado de los canales. Notas completas: https://github.com/stratum-mining/sv2-apps/releases/tag/v0.9.0',
     de_DE:
-      'Ein Neustart von Stratum V2, während es noch startet, beendet alle Prozesse des vorherigen Laufs.',
+      'Stratum V2 auf 0.9.0 aktualisiert. Verbessert die Zuverlässigkeit der Job-Deklaration, weist ungültige Mining-Ziele und Hashraten zurück und behebt Speicherlecks im Kanalzustand. Vollständige Versionshinweise: https://github.com/stratum-mining/sv2-apps/releases/tag/v0.9.0',
     pl_PL:
-      'Ponowne uruchomienie Stratum V2 w trakcie uruchamiania zatrzymuje wszystkie procesy poprzedniego uruchomienia.',
+      'Zaktualizowano Stratum V2 do 0.9.0. Poprawiono niezawodność deklarowania zadań, odrzucanie nieprawidłowych celów wydobycia i wartości hashrate oraz usunięto wycieki stanu kanałów. Pełne informacje o wydaniu: https://github.com/stratum-mining/sv2-apps/releases/tag/v0.9.0',
     fr_FR:
-      "Redémarrer Stratum V2 pendant son démarrage arrête tous les processus de l'exécution précédente.",
+      'Stratum V2 mis à jour vers 0.9.0. Améliore la fiabilité de la déclaration des travaux, rejette les cibles et taux de hachage de minage invalides et corrige les fuites d’état des canaux. Notes complètes : https://github.com/stratum-mining/sv2-apps/releases/tag/v0.9.0',
   },
   migrations: {
     up: async ({ effects }) => {},
