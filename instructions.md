@@ -23,7 +23,7 @@ Solo and Job Declaration with Pool both mine from your own node, so **install Bi
 1. Open the **Configure** task shown after install and choose a **Mining Mode**.
 2. Fill in the fields for that mode:
    - **Pool** — the pool's address, port, and authority public key (pools publish this), plus a username or worker name, often your payout address.
-   - **Solo (Sovereign)** — the Bitcoin network your node runs on, the address that should receive the block reward, and a short coinbase signature.
+   - **Solo (Sovereign)** — the Bitcoin network your node runs on, the address that should receive the block reward, and a short coinbase signature, up to 32 plain ASCII characters.
    - **Job Declaration with Pool** — the pool fields above plus the pool's Job Declaration Server port, and the Solo fields; the reward address is used as a solo fallback payout.
 3. Save. In the two sovereign modes, StartOS raises a task on Bitcoin asking you to enable its IPC socket — complete it, then start Bitcoin.
 4. Start Stratum V2.

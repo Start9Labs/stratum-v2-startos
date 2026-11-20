@@ -56,6 +56,11 @@ const dict = {
   'Downstream extranonce2 size in bytes. CGminer accepts at most 8.': 72,
   'Aggregate Channels': 73,
   'Share a single upstream channel across all miners. Enable for pools that require it, such as Braiins.': 74,
+  'Must be a hostname or IP address, without a port.': 75,
+  'Must be a Stratum V2 authority public key: 51 base58 characters.': 76,
+  'Must be a Bitcoin address.': 77,
+  'Must be at most 32 printable ASCII characters.': 78,
+  'Must be at most 255 characters, with no spaces, quotes or backslashes.': 79,
 } as const
 
 /**

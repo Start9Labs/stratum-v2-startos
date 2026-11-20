@@ -34,7 +34,7 @@ verified, tried, and decided belongs in the commit message and the PR body.
 
 ## This repo
 
-- **Keep `translator.toml` and `jdc.toml` as hand-formatted strings; don't turn them into a `FileHelper.toml` model.** A TOML serializer writes `6` for `6.0`, and upstream's `f32` fields reject it, so the daemon refuses to start.
+- **Keep `translator.toml` and `jdc.toml` as hand-formatted strings; don't turn them into a `FileHelper.toml` model.** A TOML serializer writes `6` for `6.0`, and upstream's `f32` fields reject it, so the daemon refuses to start. Interpolate every string through `tomlString`, never between bare quotes: a raw value can close the string and add TOML of its own.
 - **In the sovereign modes both daemons share one `SubContainer` instance.** The translator reaches the JD Client at `127.0.0.1`, which holds only inside one network namespace.
 - **The JD Client's `authority_secret_key` in `utils.ts` is upstream's published default, not a secret.** Don't route it through `sdk.getSecret` or regenerate it: the translator's `authority_pubkey` is the other half of the same published pair.
 - **Mount Bitcoin's `ipc` directory, not its socket, and keep the `link-ipc-socket` oneshot.** A dependency mount is always a directory, and upstream looks for `<data_dir>/[<network>/]node.sock` while Bitcoin publishes `bitcoin-core.sock`; `ipcSocketLink()` must reproduce that layout exactly, or the JD Client fails at connect time.
