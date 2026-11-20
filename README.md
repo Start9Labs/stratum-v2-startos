@@ -88,7 +88,7 @@ Install raises a critical task pointing at Configure, which suspends the ordinar
 
 One action, which is also the package's entire configuration surface.
 
-**Configure.** Run it to choose a mining mode, and again whenever pool details, payout address, or difficulty tuning change. It writes `store.json` and nothing else — no daemon is touched directly. It is idempotent and safe to repeat, returns immediately, and prefills from the current stored answers. Because `main` reads `store.json` reactively, saving a change restarts the daemons, which drops connected miners for a few seconds while they reconnect. It is allowed in any service status and clears the install-time setup task.
+**Configure.** Run it to choose a mining mode, and again whenever pool details, payout address, or difficulty tuning change. It writes `store.json` and nothing else — no daemon is touched directly. It refuses to save a text answer in the wrong form: the pool address must be a hostname or IP address without a port, the authority key 51 base58 characters, the reward address a Bitcoin address, the coinbase signature at most 32 printable ASCII characters, and the username at most 255 characters with no spaces, quotes or backslashes. It is idempotent and safe to repeat, returns immediately, and prefills from the current stored answers. Because `main` reads `store.json` reactively, saving a change restarts the daemons, which drops connected miners for a few seconds while they reconnect. It is allowed in any service status and clears the install-time setup task.
 
 ## Tasks
 

@@ -52,6 +52,10 @@ export type Upstream = {
 export const tomlFloat = (n: number): string =>
   Number.isInteger(n) ? `${n}.0` : `${n}`
 
+// JSON string escaping is a subset of TOML basic-string escaping, save DEL, which TOML forbids raw.
+export const tomlString = (s: string): string =>
+  JSON.stringify(s).replace(/\x7f/g, '\\u007f')
+
 export function generateTranslatorToml(
   t: TranslatorTuning,
   upstream: Upstream,
@@ -81,9 +85,9 @@ enable_vardiff = true
 job_keepalive_interval_secs = 60
 
 [[upstreams]]
-address = "${upstream.address}"
+address = ${tomlString(upstream.address)}
 port = ${upstream.port}
-authority_pubkey = "${upstream.authorityPubkey}"
-user_identity = "${t.username}"
+authority_pubkey = ${tomlString(upstream.authorityPubkey)}
+user_identity = ${tomlString(t.username)}
 `
 }

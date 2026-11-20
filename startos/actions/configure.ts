@@ -5,6 +5,41 @@ import { requireConfigureReplayId } from '../init/taskRequireConfigure'
 
 const { InputSpec, Value, Variants } = sdk
 
+// Each regex carries its field's length: the SDK enforces `patterns` server-side, but not `maxLength`.
+const patterns = {
+  poolAddress: {
+    regex: '^([A-Za-z0-9.-]{1,253}|\\[?[0-9A-Fa-f:.]{2,45}\\]?)$',
+    description: i18n('Must be a hostname or IP address, without a port.'),
+  },
+  poolAuthorityPubkey: {
+    regex: '^[1-9A-HJ-NP-Za-km-z]{51}$',
+    description: i18n(
+      'Must be a Stratum V2 authority public key: 51 base58 characters.',
+    ),
+  },
+  coinbaseRewardAddress: {
+    regex:
+      '^([13mn2][a-km-zA-HJ-NP-Z1-9]{25,39}|(bc|tb|bcrt)1[a-z0-9]{6,90}|(BC|TB|BCRT)1[A-Z0-9]{6,90})$',
+    description: i18n('Must be a Bitcoin address.'),
+  },
+  jdcSignature: {
+    regex: '^[ -~]{1,32}$',
+    description: i18n('Must be at most 32 printable ASCII characters.'),
+  },
+  username: {
+    regex: '^[^\\s"\\\\]{1,255}$',
+    description: i18n(
+      'Must be at most 255 characters, with no spaces, quotes or backslashes.',
+    ),
+  },
+}
+
+function check(field: keyof typeof patterns, value: string) {
+  if (!new RegExp(patterns[field].regex).test(value)) {
+    throw new Error(patterns[field].description)
+  }
+}
+
 const poolFields = {
   poolAddress: Value.text({
     name: i18n('Pool Address'),
@@ -12,6 +47,8 @@ const poolFields = {
     required: true,
     default: null,
     placeholder: 'pool.example.com',
+    maxLength: 253,
+    patterns: [patterns.poolAddress],
   }),
   poolPort: Value.number({
     name: i18n('Pool Port'),
@@ -29,6 +66,8 @@ const poolFields = {
     ),
     required: true,
     default: null,
+    maxLength: 51,
+    patterns: [patterns.poolAuthorityPubkey],
   }),
 }
 
@@ -53,6 +92,7 @@ const coinbaseRewardAddress = Value.text({
   ),
   required: true,
   default: null,
+  patterns: [patterns.coinbaseRewardAddress],
 })
 
 const jdcSignature = Value.text({
@@ -60,6 +100,8 @@ const jdcSignature = Value.text({
   description: i18n('Short label embedded in the blocks you mine.'),
   required: true,
   default: 'StratumV2 on StartOS',
+  maxLength: 32,
+  patterns: [patterns.jdcSignature],
 })
 
 export const inputSpec = InputSpec.of({
@@ -109,6 +151,8 @@ export const inputSpec = InputSpec.of({
     ),
     required: true,
     default: null,
+    maxLength: 255,
+    patterns: [patterns.username],
   }),
   minHashrateThs: Value.number({
     name: i18n('Starting Hashrate Estimate (TH/s)'),
@@ -196,6 +240,16 @@ export const configure = sdk.Action.withInput(
   },
 
   async ({ effects, input }) => {
+    const c = input.connection
+    check('username', input.username)
+    if (c.selection !== 'solo') {
+      check('poolAddress', c.value.poolAddress)
+      check('poolAuthorityPubkey', c.value.poolAuthorityPubkey)
+    }
+    if (c.selection !== 'pool') {
+      check('coinbaseRewardAddress', c.value.coinbaseRewardAddress)
+      check('jdcSignature', c.value.jdcSignature)
+    }
     const common = {
       username: input.username,
       minHashrateThs: input.minHashrateThs,
@@ -203,7 +257,6 @@ export const configure = sdk.Action.withInput(
       extranonce2Size: input.extranonce2Size,
       aggregateChannels: input.aggregateChannels,
     }
-    const c = input.connection
     if (c.selection === 'solo') {
       await storeJson.merge(effects, {
         mode: 'solo',
